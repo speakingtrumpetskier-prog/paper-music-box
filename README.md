@@ -2,6 +2,8 @@
 
 A paper-strip music box on a lamplit desk, in one HTML file. Punch holes in the paper, then turn the crank or wind the spring and listen.
 
+**Play it:** https://speakingtrumpetskier-prog.github.io/paper-music-box/
+
 Open `index.html` in a browser. It needs no build step and no server; the only outside request is the Google Fonts stylesheet.
 
 ## How to play
