@@ -62,12 +62,12 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:4px;border-ra
     <div class="songs" role="group" aria-label="Songs">
       <button class="song" id="song-nearer" data-song="nearer">Nearer, My God, to Thee</button>
       <button class="song" id="song-sailor" data-song="sailor">Drunken Sailor</button>
+      <button class="song" id="song-canon" data-song="canon">Canon in D</button>
       <button class="song" id="song-twinkle" data-song="twinkle">Twinkle, Twinkle</button>
       <button class="song" id="song-ode" data-song="ode">Ode to Joy</button>
       <button class="song" id="song-frere" data-song="frere" title="Arranged as a three-voice round">Frère Jacques</button>
       <button class="song" id="song-gymno" data-song="gymno">Gymnopédie</button>
       <button class="song" id="song-dies" data-song="dies">Dies Irae</button>
-      <button class="song" id="song-canon" data-song="canon">Canon in D</button>
       <button class="song" id="song-blank" data-song="blank">Blank strip</button>
     </div>
     <div class="strip">
@@ -1725,7 +1725,7 @@ function drawAmb() {
 
 // ================================================================ four more scenes
 // Gymnopédie: rain on a Paris window at night. Dies Irae: a cathedral nave by candlelight.
-// Drunken Sailor: on deck at night, under a swinging lantern. Pachelbel: a baroque garden at dusk, three swans in canon.
+// Drunken Sailor: on deck at night, under a swinging lantern. Pachelbel: a baroque garden at dusk, two swans in canon.
 const RN = { roofs: null, roofTop: 0, wins: [], bokeh: [], beads: [], rain: [], runs: [], pulse: 0, tower: null };
 const NV = { candles: [], smoke: [], pulse: 0 };
 const SEA = { clouds: null, spray: [], glints: [], swing: 0, swingV: 0, bump: 0 };
@@ -2094,9 +2094,9 @@ function drawSea() {
   ctx.restore();
 }
 
-// the three swans follow the same course across the pool, each two bars behind the last, as the violins do
+// the two swans follow the same course across the pool, the second two bars behind the first, as the violins do
 function swanPos(i) {
-  if (i < 0 || i > 2) return null;
+  if (i < 0 || i > 1) return null;
   const hz = horizonY(), y0 = G.y1 + (hz - G.y1) * .55, s = G.rh / 26;
   const u = mod((pT - 16 * i) / 64, 1);
   return { x: W * (.12 + .82 * u), y: y0 + Math.sin(u * TAU * 1.5) * 10 * s + (hz - y0) * .45 * Math.sin(u * Math.PI), u };
@@ -2129,7 +2129,7 @@ function drawGarden() {
   }
   // the swans and their ripples
   for (const r of GD.ripples) { const a = 1 - r.t / 2.5; ctx.strokeStyle = `rgba(255,248,235,${.4 * a})`; ctx.beginPath(); ctx.ellipse(r.x, r.y + 4 * s, (6 + r.t * 26) * s, (2 + r.t * 7) * s, 0, 0, TAU); ctx.stroke(); }
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     const p = swanPos(i), z = 9 * s;
     ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + z * .7, z * 1.4, z * .3, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#fbf6ee';
@@ -2436,7 +2436,7 @@ function buildNaveArt(s) {
 
 // ---- the palace for Pachelbel: a baroque façade with a domed centre, giant columns and a garden front
 function buildPalaceArt(s) {
-  const base = Math.round(G.y0 + 26 * s), u = Math.max(2, (base - 10) / 67), cx = W * .58;
+  const base = Math.round(G.y0 + 26 * s), u = Math.max(2, (base - 10) / 72), cx = W * .58;
   const c = document.createElement('canvas'); c.width = W; c.height = base + 4;
   const q = c.getContext('2d');
   const X = v => cx + v * u, Y = v => base - v * u, HW = clamp(Math.round(W * .46 / u), 48, 96);   // wings reach most of the way across
@@ -2517,10 +2517,19 @@ function buildPalaceArt(s) {
     q.strokeStyle = STONE; q.lineWidth = .18 * u; for (const sx of [-1, 1]) { q.beginPath(); q.arc(X(x + sx * .9), Y(25.7), .25 * u, 0, TAU); q.stroke(); }
   }
   cornice(-14.6, 14.6, 26, .8); rect(-14.6, 26.8, 14.6, 27.7, STONE2); cornice(-15, 15, 27.7, 1);
-  // the central roof the dome stands on, rising behind the pediment
-  q.fillStyle = SLATE; q.beginPath(); q.moveTo(X(-14.6), Y(28.7)); q.lineTo(X(-11.5), Y(37.6)); q.lineTo(X(11.5), Y(37.6)); q.lineTo(X(14.6), Y(28.7)); q.closePath(); q.fill();
-  rect(-11.5, 37.2, 11.5, 37.8, SLATE2);
-  balustrade(-10.6, 10.6, 37.8);
+  // a solid stone attic storey rises behind the pediment, so the dome stands on masonry carried down to the main cornice
+  rect(-14, 28.7, 14, 38.6, STONE);
+  for (let y = 29.6; y < 38; y += .9) rect(-14, y, 14, y + .1, 'rgba(141,122,98,.5)');
+  for (const x of [-14, -10.2, 10.2, 14]) rect(x - .7, 28.7, x + .7, 38.2, STONE2);
+  for (const x of [-12.1, 12.1]) { win(x - .9, 31.2, 1.8, 3.4, true, null); }
+  cornice(-14.4, 14.4, 38.2, .9);
+  balustrade(-14, 14, 39.1);
+  // stepped base of the drum, with scrolls buttressing it on either side
+  rect(-10.4, 39.1, 10.4, 41.4, STONE2); rect(-10.6, 41.4, 10.6, 41.9, STONE);
+  for (const sx of [-1, 1]) {
+    q.fillStyle = STONE; q.beginPath(); q.moveTo(X(sx * 8.4), Y(41.9)); q.lineTo(X(sx * 8.4), Y(47)); q.quadraticCurveTo(X(sx * 9.4), Y(43.4), X(sx * 11.6), Y(41.9)); q.closePath(); q.fill();
+    q.strokeStyle = SHADOW; q.lineWidth = .25 * u; q.beginPath(); q.arc(X(sx * 10.9), Y(42.7), .6 * u, 0, TAU); q.stroke();
+  }
     // the pediment, with a cartouche and garlands in the tympanum
   q.fillStyle = STONE; q.beginPath(); q.moveTo(X(-15.4), Y(28.7)); q.lineTo(X(0), Y(36.2)); q.lineTo(X(15.4), Y(28.7)); q.closePath(); q.fill();
   q.fillStyle = STONE2; q.beginPath(); q.moveTo(X(-13.4), Y(29.4)); q.lineTo(X(0), Y(35.2)); q.lineTo(X(13.4), Y(29.4)); q.closePath(); q.fill();
@@ -2529,9 +2538,12 @@ function buildPalaceArt(s) {
   q.lineWidth = .28 * u; q.strokeStyle = STONE;
   for (const sx of [-1, 1]) { q.beginPath(); q.moveTo(X(sx * 1.6), Y(31.4)); q.quadraticCurveTo(X(sx * 4.5), Y(29.6), X(sx * 7.5), Y(31)); q.quadraticCurveTo(X(sx * 9.5), Y(30), X(sx * 11), Y(30.2)); q.stroke(); }
   statue(-14.6, 28.8); statue(14.6, 28.8);
-  // the drum and dome, with its lantern
+  // the drum and dome, with its lantern, raised onto the attic's stepped base
+  const lift = 4.1, nw = GD.wins.length;
+  q.save(); q.translate(0, -lift * u);
   rect(-8.2, 37.8, 8.2, 44.6, STONE);
   for (const x of [-6, -3, 0, 3, 6]) { win(x - .65, 39, 1.3, 3, true, null); }
+  for (let i = nw; i < GD.wins.length; i++) GD.wins[i].y -= lift * u;
   for (const x of [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]) rect(x - .25, 38, x + .25, 44, STONE2);
   cornice(-8.4, 8.4, 44, .8);
   const dg = q.createLinearGradient(X(-8.5), 0, X(8.5), 0);
@@ -2543,6 +2555,7 @@ function buildPalaceArt(s) {
   cornice(-2, 2, 60, .5);
   q.fillStyle = '#7f8798'; q.beginPath(); q.ellipse(X(0), Y(60.6), 2 * u, 2.2 * u, 0, Math.PI, 0); q.fill();
   q.fillStyle = '#c9a050'; q.beginPath(); q.arc(X(0), Y(63.4), .5 * u, 0, TAU); q.fill(); rect(-.08, 63.8, .08, 65.8, '#c9a050'); rect(-.5, 64.9, .5, 65.1, '#c9a050');
+  q.restore();
   // steps up to the doors
   for (let i = 0; i < 4; i++) rect(-10 - i * .6, -i * .5 - .5, 10 + i * .6, -i * .5, i % 2 ? STONE2 : STONE);
   GD.palace = c; GD.palaceTop = 0;
@@ -2554,7 +2567,9 @@ function buildParisArt(s) {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const q = c.getContext('2d');
   RN.wins = [];
-  const roofY = Math.max(24 * s, G.y0 * .36), floorH = 64 * s, street = horizonY(), BAYW = 92 * s;   // one window per bay, well spaced
+  const roofY = Math.max(24 * s, G.y0 * .36), street = horizonY();
+  // floors are sized to the strip of façade visible above the paper: about one full storey shows, with broad bays
+  const floorH = Math.max(70 * s, (G.y0 - roofY - 34 * s) * .74), BAYW = floorH * 1.6;
   // the façade runs right across the view; the paper strip hides its middle floors
   const fx0 = -20, fx1 = W + 20;
   // mansard roof: zinc, with dormers and a long row of chimney pots
@@ -2581,8 +2596,8 @@ function buildParisArt(s) {
   for (let x = fx0 + 50 * s; x < fx1; x += BAYW) { q.fillStyle = '#c4b7a0'; q.fillRect(x - 4 * s, top + 7 * s, 8 * s, street - top - 7 * s); q.fillStyle = 'rgba(90,80,64,.35)'; q.fillRect(x + 4 * s, top + 7 * s, 1.5 * s, street - top - 7 * s); }
   let fl = 0;
   for (let y = top + 12 * s; y < street - 20 * s; y += floorH, fl++) {
-    for (let x = fx0 + 40 * s + BAYW / 2; x < fx1 - 30 * s; x += BAYW) {
-      const ww = 20 * s, wh = Math.min(floorH - 18 * s, 40 * s);
+    const ww = BAYW * .27, wh = floorH * .6;
+    for (let x = fx0 + 50 * s + (BAYW - ww) / 2; x < fx1 - 30 * s; x += BAYW) {
       q.fillStyle = '#cfc3ac'; q.fillRect(x - 3 * s, y - 3 * s, ww + 6 * s, wh + 6 * s);
       q.fillStyle = '#1e2029'; q.fillRect(x, y, ww, wh);
       q.fillStyle = '#d6cbb5'; q.beginPath(); q.moveTo(x - 4 * s, y - 3 * s); q.lineTo(x + ww / 2, y - 8 * s); q.lineTo(x + ww + 4 * s, y - 3 * s); q.closePath(); q.fill();
@@ -2802,6 +2817,7 @@ requestAnimationFrame(frame);
 // test hook: step the simulation by hand when the page is not being animated
 window.__pmb = {
   get state() { return { pT: +pT.toFixed(3), L, notes: notes.size, tapes: tapes.size, energy: +energy.toFixed(3), motorV: +motorV.toFixed(3), braked, chads: chads.length, lit: [...tine].filter(v => v > .05).length, amb: +amb.toFixed(2), rv: +rv.toFixed(2), warm: +warm.toFixed(1), spd: +spd.toFixed(2), sparks: sparks.length, rockets: rockets.length, scene: sceneOf(), gt: gesture.trail.length, ga: +gesture.a.toFixed(2), ui: +uiQuiet.toFixed(2), hud: hud.style.opacity, ghost: ghost ? ghost.scene + ":" + ghostAlpha().toFixed(2) : "" }; },
+  wind(e) { energy = e; braked = false; },
   step(n, dt) { dt = dt || 1 / 60; for (let i = 0; i < n; i++) { now += dt; update(dt); } draw(); }
 };
 })();

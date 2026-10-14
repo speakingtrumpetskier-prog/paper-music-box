@@ -23,12 +23,12 @@ Each song has a scene that comes up slowly behind the box once the music has bee
 | --- | --- |
 | Nearer, My God, to Thee | Paper lanterns rising off a night sea |
 | Drunken Sailor | On deck at night under a swinging lantern; the chords throw spray over the rail |
+| Canon in D | A baroque garden at dusk; two swans follow one course, as the two violins do, and eight fountain jets follow the bass |
 | Twinkle, Twinkle | A lake at night; the melody draws a constellation |
 | Ode to Joy | A city on a river; each melody note bursts as a firework on the beat |
 | Frère Jacques (a three-voice round) | A village at dawn; three bells in the tower, one per voice |
 | Gymnopédie No. 1 | Looking out through a rainy window at a Paris apartment building across the street; the melody sends drops running down the glass |
 | Dies Irae | A cathedral nave; every chant note lights a candle |
-| Canon in D | A baroque garden at dusk; three swans follow one course, as the three violins do, and eight fountain jets follow the bass |
 | Blank strip | Northern lights that follow the notes you punch |
 
 ## Sources
