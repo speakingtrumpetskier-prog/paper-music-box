@@ -192,19 +192,22 @@ function sailor() {
 
 // Pachelbel, Canon in D (c. 1694), from the Mutopia edition of the original parts for three violins and bass.
 // Written here in C and played on a comb tuned a whole step up, so it sounds in D. A beat is an eighth note.
-// A music-box arrangement of the famous opening: the bass plays its two-bar ground alone, the first violin plays
-// the first eight bars of its line, then plays them again while a second violin follows two bars behind, in canon.
-// (In bar 6 the low neighbour note sits below the comb, so it becomes the third above.)
+// The bass plays its two-bar ground alone, then the violins enter one at a time, two bars apart, all playing the
+// same line: the opening half notes, the walking eighths, and the first running sixteenths (bars 1-16 of the part).
+// Three low notes are lifted an octave to fit the comb.
 const CANON = 'E5:2 D5:2 C5:2 B4:2 A4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 F4:2 D4:2 ' +
-  'C4 E4 G4 F4 E4 C4 E4 D4 C4 E4 C4 G4 F4 A4 G4 F4 ' +
-  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5';
+  'C4 E4 G4 F4 E4 C4 E4 D4 C4 A4 C4 G4 F4 A4 G4 F4 ' +
+  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5 ' +
+  ['C5 B4 C5 C4 B4 G4 D5 E5 C5 C6 B5 A5 B5 E5 G5 A5', 'F5 E5 D5 F5 E5 D5 C5 B4 A4 G4 F4 E4 D4 F4 E4 D4',
+   'C4 D4 E4 F4 G4 D4 G4 F4 E4 A4 G4 F4 G4 F4 E4 D4', 'C4 A4 A4 B4 C5 B4 A4 G4 F4 E4 D4 A4 G4 A4 G4 F4']
+    .map(bar => bar.split(' ').map(n => n + ':.5').join(' ')).join(' ') + ' ' +
+  'E4 E5 D5:2 r C5 E5:2 A5:2 G5:2 A5:2 B5:2 C6 C5 B4:2 r A4 C5:2 C5:3 C5 C5 F5 D5 G5';
 const GROUND = 'C4:2 G4:2 A4:2 E4:2 F4:2 C4:2 F4:2 G4:2';
 function canon() {
   const out = [];
-  for (let k = 0; k < 10; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
-  out.push(...tagged(seq(CANON, 16), 1), ...tagged(seq(CANON, 80), 1), ...tagged(seq(CANON, 96), 2));
-  for (const n of ['C4', 'G4']) out.push([160, NAMES.indexOf(n), 0]);
-  for (const n of ['C5', 'E5']) out.push([160, NAMES.indexOf(n), 1]);   // the closing chord
+  for (let k = 0; k < 11; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
+  for (let v = 0; v < 3; v++) out.push(...tagged(seq(CANON, 16 + v * 16), v + 1));
+  for (const n of ['C4', 'E4', 'G4', 'C5']) out.push([176, NAMES.indexOf(n), 0]);   // the closing chord
   return out;
 }
 const SONGS = {
@@ -219,7 +222,7 @@ const SONGS = {
   gymno: { L: 63, meter: 3, tempo: 1.15, transpose: 2, notes: gymnopedie },
   dies: { L: 72, meter: 4, tempo: 1.5, notes: diesIrae },
   sailor: { L: 64, meter: 8, tempo: 3.1, notes: sailor },
-  canon: { L: 168, meter: 8, tempo: 1.9, transpose: 2, notes: canon },
+  canon: { L: 184, meter: 8, tempo: 2.3, transpose: 2, notes: canon },
   blank: { L: 32, tempo: 2.0, notes: () => [] }
 };
 
@@ -303,6 +306,7 @@ let deskCv = null, paperPat = null;
 function layout() {
   dpr = Math.min(2, window.devicePixelRatio || 1);
   W = window.innerWidth; H = window.innerHeight;
+  if (!W || !H) return;   // a hidden frame has no size yet; the resize handler lays out once it does
   cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr);
   const hb = Math.max(...[...hud.children].map(c => c.getBoundingClientRect().bottom));   // content bottom, not the fade below it
   const ir = hud.children[0].getBoundingClientRect(), tr = hud.children[1].getBoundingClientRect();
@@ -479,7 +483,7 @@ function advance(d, spread, source) {
     for (let r = 0; r < N; r++) if (notes.has(base + r)) {
       everPlayed = true;
       const v = voiceOf.get(base + r);   // bass and accompaniment sit back so the melody leads
-      pluck(r, spread ? ((t / 2 - p0) / d) * spread : 0, v === 0 ? .58 : v === 2 ? .82 : 1, t);
+      pluck(r, spread ? ((t / 2 - p0) / d) * spread : 0, songId === "canon" ? 1 : v === 0 ? .58 : v === 2 ? .82 : 1, t);
     }
   }
 }
@@ -1725,7 +1729,7 @@ function drawAmb() {
 
 // ================================================================ four more scenes
 // Gymnopédie: rain on a Paris window at night. Dies Irae: a cathedral nave by candlelight.
-// Drunken Sailor: on deck at night, under a swinging lantern. Pachelbel: a baroque garden at dusk, two swans in canon.
+// Drunken Sailor: on deck at night, under a swinging lantern. Pachelbel: a baroque garden at dusk, three swans in canon.
 const RN = { roofs: null, roofTop: 0, wins: [], bokeh: [], beads: [], rain: [], runs: [], pulse: 0, tower: null };
 const NV = { candles: [], smoke: [], pulse: 0 };
 const SEA = { clouds: null, spray: [], glints: [], swing: 0, swingV: 0, bump: 0 };
@@ -2094,9 +2098,9 @@ function drawSea() {
   ctx.restore();
 }
 
-// the two swans follow the same course across the pool, the second two bars behind the first, as the violins do
+// the three swans follow the same course across the pool, each two bars behind the last, as the violins do
 function swanPos(i) {
-  if (i < 0 || i > 1) return null;
+  if (i < 0 || i > 2) return null;
   const hz = horizonY(), y0 = G.y1 + (hz - G.y1) * .55, s = G.rh / 26;
   const u = mod((pT - 16 * i) / 64, 1);
   return { x: W * (.12 + .82 * u), y: y0 + Math.sin(u * TAU * 1.5) * 10 * s + (hz - y0) * .45 * Math.sin(u * Math.PI), u };
@@ -2129,7 +2133,7 @@ function drawGarden() {
   }
   // the swans and their ripples
   for (const r of GD.ripples) { const a = 1 - r.t / 2.5; ctx.strokeStyle = `rgba(255,248,235,${.4 * a})`; ctx.beginPath(); ctx.ellipse(r.x, r.y + 4 * s, (6 + r.t * 26) * s, (2 + r.t * 7) * s, 0, 0, TAU); ctx.stroke(); }
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 3; i++) {
     const p = swanPos(i), z = 9 * s;
     ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + z * .7, z * 1.4, z * .3, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#fbf6ee';
