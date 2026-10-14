@@ -60,14 +60,14 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:4px;border-ra
   </div>
   <div class="tools">
     <div class="songs" role="group" aria-label="Songs">
+      <button class="song" id="song-nearer" data-song="nearer">Nearer, My God, to Thee</button>
+      <button class="song" id="song-sailor" data-song="sailor">Drunken Sailor</button>
       <button class="song" id="song-twinkle" data-song="twinkle">Twinkle, Twinkle</button>
       <button class="song" id="song-ode" data-song="ode">Ode to Joy</button>
       <button class="song" id="song-frere" data-song="frere" title="Arranged as a three-voice round">Frère Jacques</button>
-      <button class="song" id="song-nearer" data-song="nearer">Nearer, My God, to Thee</button>
       <button class="song" id="song-gymno" data-song="gymno">Gymnopédie</button>
       <button class="song" id="song-dies" data-song="dies">Dies Irae</button>
-      <button class="song" id="song-sailor" data-song="sailor">Drunken Sailor</button>
-      <button class="song" id="song-canon" data-song="canon">Pachelbel's Canon</button>
+      <button class="song" id="song-canon" data-song="canon">Canon in D</button>
       <button class="song" id="song-blank" data-song="blank">Blank strip</button>
     </div>
     <div class="strip">
@@ -144,7 +144,8 @@ const HYMN_BASS = 'C4:2 G4:1 A4:1 F4:1.5 F4:.5 F4:2 C4:2 E4:1 C4:1 G4:4 ' +
 const seqLen = str => str.trim().split(/\s+/).reduce((a, t) => a + (t.includes(':') ? parseFloat(t.split(':')[1]) : 1), 0);
 const tagged = (arr, v) => arr.map(([b, r]) => [b, r, v]);   // voices: 0 bass or drone, 1 melody, 2+ other parts
 
-// Satie, Gymnopédie No. 1 (1888): the first section, from the Mutopia edition (a Dover reprint), moved from D to C.
+// Satie, Gymnopédie No. 1 (1888): the first section, from the Mutopia edition (a Dover reprint). Written here in C
+// and played on a comb tuned a whole step up, so it sounds in Satie's D.
 // Three beats to a bar: the bass on the first beat, the chord on the second, the melody above. The middle section
 // needs a note this comb does not have in the same key, so the strip loops the first section.
 const GYM_MEL = 'r:12 r E5 G5 F5 E5 B4 A4 B4 C5 G4:3 E4:12 r E5 G5 F5 E5 B4 A4 B4 C5 G4:3 B4:3 E5:3 D4:9';
@@ -189,18 +190,24 @@ function sailor() {
   return out;
 }
 
-// Pachelbel, Canon (c. 1694), from the Mutopia edition of the original parts for three violins and bass, moved from D to C.
-// A beat here is an eighth note. The violins all play one line, each entering two bars after the last, over an
-// eight-note bass that repeats every two bars. The first eight bars of the line loop, so the canon never ends.
-// (One low note in bar 6 is lifted an octave to fit the comb.)
+// Pachelbel, Canon in D (c. 1694), from the Mutopia edition of the original parts for three violins and bass.
+// Written here in C and played on a comb tuned a whole step up, so it sounds in D. A beat is an eighth note.
+// The bass plays its two-bar ground alone, then the violins enter one at a time, two bars apart, all playing the
+// same line: the opening half notes, the walking eighths, and the first running sixteenths (bars 1-16 of the part).
+// Three low notes are lifted an octave to fit the comb.
 const CANON = 'E5:2 D5:2 C5:2 B4:2 A4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 F4:2 D4:2 ' +
   'C4 E4 G4 F4 E4 C4 E4 D4 C4 A4 C4 G4 F4 A4 G4 F4 ' +
-  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5';
+  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5 ' +
+  ['C5 B4 C5 C4 B4 G4 D5 E5 C5 C6 B5 A5 B5 E5 G5 A5', 'F5 E5 D5 F5 E5 D5 C5 B4 A4 G4 F4 E4 D4 F4 E4 D4',
+   'C4 D4 E4 F4 G4 D4 G4 F4 E4 A4 G4 F4 G4 F4 E4 D4', 'C4 A4 A4 B4 C5 B4 A4 G4 F4 E4 D4 A4 G4 A4 G4 F4']
+    .map(bar => bar.split(' ').map(n => n + ':.5').join(' ')).join(' ') + ' ' +
+  'E4 E5 D5:2 r C5 E5:2 A5:2 G5:2 A5:2 B5:2 C6 C5 B4:2 r A4 C5:2 C5:3 C5 C5 F5 D5 G5';
 const GROUND = 'C4:2 G4:2 A4:2 E4:2 F4:2 C4:2 F4:2 G4:2';
 function canon() {
   const out = [];
-  for (let k = 0; k < 4; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
-  for (let v = 0; v < 3; v++) out.push(...tagged(seq(CANON, v * 16), v + 1));
+  for (let k = 0; k < 11; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
+  for (let v = 0; v < 3; v++) out.push(...tagged(seq(CANON, 16 + v * 16), v + 1));
+  for (const n of ['C4', 'E4', 'G4', 'C5']) out.push([176, NAMES.indexOf(n), 0]);   // the closing chord
   return out;
 }
 const SONGS = {
@@ -212,15 +219,20 @@ const SONGS = {
     ...seq('CGCGCGCYGGGCCGCY'.split('').map(c => ODE_BASS[c]).join(' ')) ] },
   frere: { L: 32, tempo: 2.0, notes: () => [ ...seq(FJ, 0), ...seq(FJ_LOW, 8), ...seq(FJ, 16) ] },
   nearer: { L: 64, tempo: 1.6, notes: () => [...seq(HYMN), ...seq(HYMN_BASS)] },
-  gymno: { L: 63, meter: 3, tempo: 1.15, notes: gymnopedie },
+  gymno: { L: 63, meter: 3, tempo: 1.15, transpose: 2, notes: gymnopedie },
   dies: { L: 72, meter: 4, tempo: 1.5, notes: diesIrae },
   sailor: { L: 64, meter: 8, tempo: 3.1, notes: sailor },
-  canon: { L: 64, meter: 8, tempo: 2.3, notes: canon },
+  canon: { L: 184, meter: 8, tempo: 2.3, transpose: 2, notes: canon },
   blank: { L: 32, tempo: 2.0, notes: () => [] }
 };
 
 // ---------------------------------------------------------------- state
 let L = 48, meter = 4;          // strip length in beats, beats to a bar
+let transpose = 0;               // semitones the comb is tuned above C major (a song in D tunes it up 2)
+const PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const noteLetter = r => PC[(MIDI[r] + transpose) % 12];
+const noteName = r => noteLetter(r) + (Math.floor((MIDI[r] + transpose) / 12) - 1);
+const noteFreq = r => FREQ[r] * Math.pow(2, transpose / 12);
 let voiceOf = new Map();         // which part each preset note belongs to (bass, melody, ...)
 let notes = new Set();        // key = halfBeat * 16 + row
 let tapes = new Map();        // key -> {a, w}
@@ -239,22 +251,22 @@ let now = 0;
 
 function loadSong(id, keepPos) {
   const s = SONGS[id];
-  songId = id; L = s.L; meter = s.meter || 4; baseTempo = s.tempo; voiceOf = new Map();
+  songId = id; L = s.L; meter = s.meter || 4; transpose = s.transpose || 0; baseTempo = s.tempo; voiceOf = new Map();
   sceneRestart = true;   // loading any song, even the current one, restarts its scene and reveal
   notes = new Set(); tapes = new Map(); holeBorn.clear();
   for (const [b, r, v] of s.notes()) { const k = mod(Math.round(b * 2), 2 * L) * 16 + r; notes.add(k); if (v != null) voiceOf.set(k, v); }
   if (!keepPos) pT = Math.round(pT / L) * L - 1.25;
   refreshUi(); save();
 }
-function snapshot() { return { L, meter, notes: new Set(notes), tapes: new Map(tapes), songId, baseTempo }; }
+function snapshot() { return { L, meter, transpose, notes: new Set(notes), tapes: new Map(tapes), songId, baseTempo }; }
 function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 200) undoStack.shift(); }
 function undo() {
   const s = undoStack.pop(); if (!s) return;
-  L = s.L; meter = s.meter || 4; notes = s.notes; tapes = s.tapes; songId = s.songId; baseTempo = s.baseTempo;
+  L = s.L; meter = s.meter || 4; transpose = s.transpose || 0; notes = s.notes; tapes = s.tapes; songId = s.songId; baseTempo = s.baseTempo;
   refreshUi(); save(); tickSound(.12);
 }
 function setLength(newL) {
-  newL = clamp(newL, 2 * meter, 160); if (newL === L) return;
+  newL = clamp(newL, 2 * meter, 200); if (newL === L) return;
   pushUndo();
   const lim = newL * 2;
   for (const k of [...notes]) if ((k >> 4) >= lim) notes.delete(k);
@@ -270,7 +282,7 @@ function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
-      localStorage.setItem(STORE, JSON.stringify({ L, meter, songId, baseTempo, n: [...notes],
+      localStorage.setItem(STORE, JSON.stringify({ L, meter, transpose, songId, baseTempo, n: [...notes],
         tp: [...tapes].map(([k, v]) => [k, +v.a.toFixed(2), +v.w.toFixed(2)]) }));
     } catch (e) { /* storage unavailable: the strip just won't persist */ }
   }, 250);
@@ -278,8 +290,8 @@ function save() {
 function restore() {
   try {
     const d = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (!d || !Array.isArray(d.n) || !(d.L >= 4 && d.L <= 160)) return false;
-    L = d.L; meter = d.meter || 4; songId = d.songId || 'blank'; baseTempo = d.baseTempo || 2;
+    if (!d || !Array.isArray(d.n) || !(d.L >= 4 && d.L <= 200)) return false;
+    L = d.L; meter = d.meter || 4; transpose = d.transpose || 0; songId = d.songId || 'blank'; baseTempo = d.baseTempo || 2;
     notes = new Set(d.n.filter(k => Number.isInteger(k) && (k >> 4) < 2 * L && (k & 15) < N));
     tapes = new Map((d.tp || []).map(([k, a, w]) => [k, { a, w }]));
     refreshUi();
@@ -409,7 +421,7 @@ function pluck(r, delay, vel, tIdx) {
   const fire = () => { tine[r] = 1; ripples.push({ x: G.pick, y: rowY(r), t: 0 }); ambNote(r, tIdx); mechOnPluck(r); };
   if (delay > .004) setTimeout(fire, delay * 1000); else fire();
   if (!ac) return;
-  const t = ac.currentTime + .012 + delay, f = FREQ[r];
+  const t = ac.currentTime + .012 + delay, f = noteFreq(r);
   const dec = 2.1 * Math.pow(261.6 / f, .55);
   const out = ac.createGain(); out.gain.value = .3 * vel * (1 - r * .012);
   let tail = out;
@@ -715,7 +727,7 @@ function drawComb() {
   // engraved note letters
   ctx.font = `700 ${Math.max(8, rh * .5)}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (let r = 0; r < N; r++) {
-    const x = rootX(r) - rh * .5, y = rowY(r) + 1, ch = NAMES[r][0];
+    const x = rootX(r) - rh * .5, y = rowY(r) + 1, ch = noteLetter(r);
     ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillText(ch, x + .8, y + .8);
     ctx.fillStyle = r % 7 === 0 ? 'rgba(20,24,28,.85)' : 'rgba(20,24,28,.55)'; ctx.fillText(ch, x, y);
   }
@@ -856,7 +868,7 @@ function drawHover() {
   ctx.strokeStyle = has ? 'rgba(170,120,40,.9)' : 'rgba(47,67,91,.85)';
   ctx.lineWidth = 1.4; ctx.setLineDash([3, 3]);
   circle(hover.x, hover.y, rh * .27 + (has ? 3 : 0)); ctx.stroke(); ctx.setLineDash([]);
-  const label = (has ? 'Tape over ' : '') + NAMES[hover.r];
+  const label = (has ? 'Tape over ' : '') + noteName(hover.r);
   ctx.font = `700 ${Math.max(11, rh * .5)}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const w = ctx.measureText(label).width + 12, h = Math.max(16, rh * .72);
   const lx = hover.x, ly = hover.y - rh * .95;
@@ -1722,71 +1734,12 @@ const SEA = { clouds: null, spray: [], glints: [], swing: 0, swingV: 0, bump: 0 
 const GD = { palace: null, palaceTop: 0, wins: [], jets: new Float32Array(8), ripples: [], flies: [] };
 
 function buildScenes4(rand, s, hz) {
-  // ---- Paris rooftops: mansards, chimney pots, dormers, and the tower in the distance
+  // ---- Paris across the street, the cathedral, and the palace: detailed drawings made once per layout
+  buildParisArt(s); buildNaveArt(s); buildPalaceArt(s);
   {
-    const top = Math.max(0, G.y0 - 150 * s), h = Math.ceil(H - top);
-    const c = document.createElement('canvas'); c.width = W; c.height = h;
-    const q = c.getContext('2d'), base = hz - top;
-    RN.wins = [];
-    // the tower, far off, drawn first so the roofs stand in front of it
-    const tx = W * .74, tTop = Math.max(6, G.y0 * .12) - top, tH = base - tTop;
-    q.fillStyle = '#070a12';
-    q.beginPath(); q.moveTo(tx - tH * .19, base); q.quadraticCurveTo(tx - tH * .05, base - tH * .45, tx - 2, tTop + 8); q.lineTo(tx + 2, tTop + 8);
-    q.quadraticCurveTo(tx + tH * .05, base - tH * .45, tx + tH * .19, base); q.lineTo(tx + tH * .1, base); q.quadraticCurveTo(tx, base - tH * .2, tx - tH * .1, base); q.closePath(); q.fill();
-    q.fillRect(tx - tH * .09, base - tH * .3, tH * .18, 3); q.fillRect(tx - tH * .05, base - tH * .58, tH * .1, 2); q.fillRect(tx - 1, tTop, 2, 10);
-    RN.tower = { x: tx, y: tTop + top };
-    for (let layer = 0; layer < 2; layer++) {
-      const col = layer ? '#05070c' : '#0b0e18';
-      for (let x = -10; x < W;) {
-        const w = (40 + rand() * 70) * s * (layer ? 1 : .7), bh = (layer ? 26 + rand() * 30 : 40 + rand() * 40) * s, rh = (10 + rand() * 12) * s;
-        const y0 = base - bh;
-        q.fillStyle = col;
-        q.fillRect(x, y0, w, bh + 2);
-        q.beginPath(); q.moveTo(x - 2 * s, y0); q.lineTo(x + 6 * s, y0 - rh); q.lineTo(x + w - 6 * s, y0 - rh); q.lineTo(x + w + 2 * s, y0); q.closePath(); q.fill();
-        // chimney stack with a row of pots
-        if (rand() < .8) {
-          const cx = x + w * (.2 + rand() * .6), ch = (8 + rand() * 8) * s, cw = (8 + rand() * 10) * s;
-          q.fillRect(cx, y0 - rh - ch, cw, ch + rh);
-          for (let p = 0; p < Math.max(1, Math.floor(cw / (3.2 * s))); p++) q.fillRect(cx + 1 + p * 3.2 * s, y0 - rh - ch - 3 * s, 2 * s, 3 * s);
-        }
-        // dormers in the slope, and windows in the façade
-        for (let dx = x + 8 * s; dx < x + w - 12 * s; dx += 14 * s) {
-          if (rand() < .55) { q.fillRect(dx, y0 - rh * .8, 6 * s, rh * .8); q.beginPath(); q.moveTo(dx - 1, y0 - rh * .8); q.lineTo(dx + 3 * s, y0 - rh - 2 * s); q.lineTo(dx + 6 * s + 1, y0 - rh * .8); q.fill(); RN.wins.push({ x: dx + 1.5 * s, y: y0 - rh * .6 + top, w: 3 * s, h: 4 * s, on: rand() < .35, ph: rand() * 6, warm: rand() }); }
-          if (layer) for (let wy = y0 + 6 * s; wy < base - 8 * s; wy += 11 * s) if (rand() < .3) RN.wins.push({ x: dx, y: wy + top, w: 4 * s, h: 6 * s, on: rand() < .4, ph: rand() * 6, warm: rand() });
-        }
-        x += w + rand() * 6 * s;
-      }
-    }
-    RN.roofs = c; RN.roofTop = top;
-    RN.bokeh = []; for (let i = 0; i < 46; i++) RN.bokeh.push({ x: rand() * W, y: G.y1 + rand() * (H - G.y1) * .9 - (rand() < .4 ? (G.y1 - 20) * rand() : 0), r: (6 + rand() * 18) * s, hue: rand() < .7 ? 30 + rand() * 20 : 190 + rand() * 30, ph: rand() * 6 });
+    RN.bokeh = []; for (let i = 0; i < 34; i++) RN.bokeh.push({ x: rand() * W, y: G.y1 + rand() * (H - G.y1) * .9 - (rand() < .4 ? (G.y1 - 20) * rand() : 0), r: (6 + rand() * 16) * s, hue: rand() < .75 ? 30 + rand() * 20 : 190 + rand() * 30, ph: rand() * 6 });
     RN.beads = []; for (let i = 0; i < 320; i++) RN.beads.push({ x: rand() * W, y: rand() * H, r: (.6 + rand() * rand() * 2.4) * s });
     RN.rain = []; for (let i = 0; i < 160; i++) RN.rain.push({ x: rand() * W, y: rand() * H, l: (8 + rand() * 18) * s, v: (300 + rand() * 260) * s });
-  }
-  // ---- baroque palace façade for the garden at dusk
-  {
-    const ph = Math.max(40 * s, Math.min(G.y0 * .62, 150 * s)), c = document.createElement('canvas');
-    c.width = W; c.height = Math.ceil(ph + 60 * s);
-    const q = c.getContext('2d'), base = c.height, cx = W * .6, fw = Math.min(W * .7, 760 * s);
-    GD.wins = [];
-    q.fillStyle = '#2d2338';
-    const bodyH = ph * .45;
-    q.fillRect(cx - fw / 2, base - bodyH, fw, bodyH);
-    q.fillRect(cx - fw * .12, base - bodyH - ph * .12, fw * .24, ph * .12 + 2);
-    q.beginPath(); q.moveTo(cx - fw * .14, base - bodyH - ph * .12); q.lineTo(cx, base - bodyH - ph * .26); q.lineTo(cx + fw * .14, base - bodyH - ph * .12); q.fill();
-    // the dome and its lantern
-    const dR = fw * .07, dY = base - bodyH - ph * .26;
-    q.beginPath(); q.arc(cx, dY, dR, Math.PI, 0); q.fill(); q.fillRect(cx - dR, dY - 1, dR * 2, dR * .5);
-    q.fillRect(cx - dR * .18, dY - dR - dR * .55, dR * .36, dR * .6); q.beginPath(); q.arc(cx, dY - dR - dR * .55, dR * .18, Math.PI, 0); q.fill();
-    // balustrade along the roofline with urns
-    for (let x = cx - fw / 2; x < cx + fw / 2; x += 12 * s) { q.fillRect(x, base - bodyH - 5 * s, 2 * s, 5 * s); }
-    for (let x = cx - fw / 2; x <= cx + fw / 2 + 1; x += fw / 8) { q.fillRect(x - 3 * s, base - bodyH - 10 * s, 6 * s, 8 * s); }
-    for (let x = cx - fw / 2 + 10 * s; x < cx + fw / 2 - 8 * s; x += 18 * s) for (const fy of [.25, .62]) GD.wins.push({ x, y: base - bodyH * (1 - fy), w: 6 * s, h: bodyH * .26, k: rand() });
-    // cypresses either side
-    for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
-      const x = cx + side * (fw / 2 + (14 + i * 22) * s), th = (40 + rand() * 30) * s;
-      q.fillStyle = '#1e2a24'; q.beginPath(); q.ellipse(x, base - th / 2, 6 * s, th / 2, 0, 0, TAU); q.fill();
-    }
-    GD.palace = c; GD.palaceTop = Math.max(4, G.y0 - 8 * s) - base;
     GD.flies = []; for (let i = 0; i < 40; i++) GD.flies.push({ x: rand() * W, y: G.y1 + rand() * (H - G.y1), ph: rand() * 6, sp: .3 + rand() * .6 });
   }
   // ---- fast clouds over the moon for the night at sea
@@ -1870,55 +1823,62 @@ function ambNote4(sc, r, v, s) {
 
 // ---- drawing ----
 function drawRain() {
-  const s = G.rh / 26, hz = horizonY();
+  const s = G.rh / 26, street = horizonY();
+  // a strip of night sky over the rooftops, lit orange underneath by the city
   ctx.globalAlpha = stage(0, .3);
-  skyFill('#141d33', '#2c3753', '#64505a', hz + 40 * s);
+  skyFill('#10172a', '#2a3048', '#5c4752', G.y0);
   ctx.globalAlpha = 1;
-  // low cloud lit orange from the city underneath
-  ctx.globalAlpha = stage(.1, .45);
-  const cg = ctx.createLinearGradient(0, G.y0 * .3, 0, hz);
-  cg.addColorStop(0, 'rgba(255,160,90,0)'); cg.addColorStop(1, 'rgba(255,150,90,.18)');
-  ctx.fillStyle = cg; ctx.fillRect(0, 0, W, hz);
-  // the tower's searchlight sweeping slowly over the city
-  const bA = stage(.55, 1);
-  if (bA > .01 && RN.tower) {
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = bA;
-    const a = now * .45, L2 = W * .8;
-    for (const k of [0, Math.PI]) {
-      const ang = a + k, sp = .035;
-      const bg = ctx.createLinearGradient(RN.tower.x, RN.tower.y, RN.tower.x + Math.cos(ang) * L2, RN.tower.y + Math.sin(ang) * L2 * .08);
-      bg.addColorStop(0, 'rgba(255,236,190,.22)'); bg.addColorStop(1, 'rgba(255,236,190,0)');
-      ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(RN.tower.x, RN.tower.y);
-      ctx.lineTo(RN.tower.x + Math.cos(ang - sp) * L2, RN.tower.y + Math.sin(ang - sp) * L2 * .08);
-      ctx.lineTo(RN.tower.x + Math.cos(ang + sp) * L2, RN.tower.y + Math.sin(ang + sp) * L2 * .08); ctx.closePath(); ctx.fill();
-    }
-    ctx.restore();
-  }
-  ctx.globalAlpha = stage(.15, .5);
-  ctx.drawImage(RN.roofs, 0, RN.roofTop);
+  // the building across the street
+  ctx.globalAlpha = stage(.12, .5);
+  if (RN.facade) ctx.drawImage(RN.facade, 0, 0);
+  ctx.globalAlpha = stage(.2, .6);
   for (const w of RN.wins) if (w.on) {
-    ctx.fillStyle = w.warm < .75 ? `rgba(255,200,120,${.75 + .2 * Math.sin(now * .7 + w.ph)})` : 'rgba(170,200,255,.7)';
-    ctx.fillRect(w.x, w.y, w.w, w.h);
+    const fl = .85 + .15 * Math.sin(now * .5 + w.ph);
+    if (w.kind === 'cafe') { ctx.fillStyle = `rgba(255,196,120,${.75 * fl})`; ctx.fillRect(w.x, w.y, w.w, w.h); continue; }
+    const g = ctx.createLinearGradient(0, w.y, 0, w.y + w.h);
+    g.addColorStop(0, w.warm < .8 ? `rgba(255,200,120,${.85 * fl})` : `rgba(170,200,255,${.7 * fl})`); g.addColorStop(1, w.warm < .8 ? `rgba(220,140,70,${.85 * fl})` : `rgba(120,150,210,${.7 * fl})`);
+    ctx.fillStyle = g; ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.fillStyle = 'rgba(255,240,220,.18)'; ctx.fillRect(w.x, w.y, w.w * .28, w.h); ctx.fillRect(w.x + w.w * .72, w.y, w.w * .28, w.h);   // curtains
+    ctx.fillStyle = 'rgba(30,24,20,.6)'; ctx.fillRect(w.x + w.w / 2 - .5, w.y, 1, w.h); ctx.fillRect(w.x, w.y + w.h * .45, w.w, 1);   // glazing bars
   }
-  // the street below, wet
-  const sg = ctx.createLinearGradient(0, hz, 0, H);
-  sg.addColorStop(0, '#0e1220'); sg.addColorStop(1, '#05070d');
-  ctx.fillStyle = sg; ctx.fillRect(0, hz, W, H - hz);
-  ctx.globalAlpha = 1;
-  // rain falling beyond the glass
-  ctx.globalAlpha = stage(.2, .6); ctx.strokeStyle = 'rgba(190,205,230,.16)'; ctx.lineWidth = 1;
+  // someone crosses the lit room now and then
+  if (RN.figure) {
+    const w = RN.figure, u = ((now * .045) % 1) * 2.4 - .7;
+    if (u > -.3 && u < 1.3) {
+      ctx.save(); ctx.beginPath(); ctx.rect(w.x, w.y, w.w, w.h); ctx.clip();
+      const fx = w.x + u * w.w, fy = w.y + w.h;
+      ctx.fillStyle = 'rgba(40,26,20,.75)';
+      ctx.beginPath(); ctx.ellipse(fx, fy - w.h * .62, w.w * .12, w.w * .14, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(fx - w.w * .22, fy); ctx.quadraticCurveTo(fx - w.w * .2, fy - w.h * .45, fx, fy - w.h * .48); ctx.quadraticCurveTo(fx + w.w * .2, fy - w.h * .45, fx + w.w * .22, fy); ctx.fill();
+      ctx.restore();
+    }
+  }
+  // street lamps and their reflections in the wet road
+  ctx.globalAlpha = stage(.3, .7);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const l of RN.lamps || []) {
+    const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 60 * s);
+    g.addColorStop(0, 'rgba(255,210,140,.5)'); g.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = g; ctx.fillRect(l.x - 60 * s, l.y - 60 * s, 120 * s, 120 * s);
+    for (let k = 0; k < 9; k++) { const y = street + 4 * s + k * k * 1.6 * s, w = (3 + k) * s * (.6 + .4 * Math.sin(now * 2 + k + l.x)); ctx.fillStyle = `rgba(255,200,130,${.25 * (1 - k / 9)})`; ctx.fillRect(l.x - w, y, w * 2, 1.5 * s); }
+  }
+  ctx.restore();
+  ctx.fillStyle = '#121218';
+  for (const l of RN.lamps || []) { ctx.fillRect(l.x - 1.2 * s, l.y, 2.4 * s, street - l.y + 2 * s); ctx.fillStyle = 'rgba(255,220,160,.95)'; ctx.beginPath(); ctx.arc(l.x, l.y, 3 * s, 0, TAU); ctx.fill(); ctx.fillStyle = '#121218'; }
+  // rain falling between us and the building
+  ctx.globalAlpha = stage(.25, .6); ctx.strokeStyle = 'rgba(200,212,235,.18)'; ctx.lineWidth = 1;
   ctx.beginPath(); for (const r of RN.rain) { ctx.moveTo(r.x, r.y); ctx.lineTo(r.x + r.l * .18, r.y + r.l); } ctx.stroke();
-  // out-of-focus lights seen through the wet window
+  // lights blurred by water on the glass
   ctx.globalAlpha = stage(.3, .7);
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   for (const b of RN.bokeh) {
-    const a = (.16 + .08 * Math.sin(now * .6 + b.ph)) * (1 + RN.pulse * .8), R = b.r;
+    const a = (.13 + .06 * Math.sin(now * .6 + b.ph)) * (1 + RN.pulse * .8), R = b.r;
     const g = ctx.createRadialGradient(b.x, b.y, R * .55, b.x, b.y, R);
     g.addColorStop(0, `hsla(${b.hue},80%,62%,${a})`); g.addColorStop(.85, `hsla(${b.hue},80%,68%,${a * 1.4})`); g.addColorStop(1, `hsla(${b.hue},80%,60%,0)`);
     ctx.fillStyle = g; ctx.fillRect(b.x - R, b.y - R, R * 2, R * 2);
   }
   ctx.restore();
-  // drops resting on the glass, each with a highlight and a dark rim
+  // drops resting on the glass
   ctx.globalAlpha = stage(.35, .8);
   for (const b of RN.beads) {
     ctx.fillStyle = 'rgba(10,14,24,.35)'; ctx.beginPath(); ctx.arc(b.x, b.y + b.r * .25, b.r, 0, TAU); ctx.fill();
@@ -1938,85 +1898,69 @@ function drawRain() {
     ctx.fillStyle = `rgba(255,255,255,${.8 * fade})`; ctx.fillRect(d.x - d.r * .3, d.y - d.r * .5, d.r * .35, d.r * .3);
   }
   ctx.lineCap = 'butt';
-  // condensation creeping in from the frame
+  // condensation in the corners
   ctx.globalAlpha = stage(.4, .9);
   const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .75);
-  v.addColorStop(0, 'rgba(180,195,215,0)'); v.addColorStop(1, 'rgba(180,195,215,.16)');
+  v.addColorStop(0, 'rgba(180,195,215,0)'); v.addColorStop(1, 'rgba(180,195,215,.14)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  // our own window: a painted wooden frame with a mullion and a transom
+  ctx.globalAlpha = stage(.08, .4);
+  const fw = 16 * s, mx = W * .5, ty = Math.max(fw * 2, G.y0 * .5);
+  const frame = (x, y, w, h) => { const g = ctx.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, '#2b2622'); g.addColorStop(.5, '#3a332d'); g.addColorStop(1, '#221d1a'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h); };
+  frame(0, 0, fw, H); frame(W - fw, 0, fw, H); frame(0, 0, W, fw); frame(0, H - fw, W, fw);
+  frame(mx - fw * .45, 0, fw * .9, H); frame(0, ty - fw * .4, W, fw * .8);
+  ctx.fillStyle = 'rgba(255,230,190,.08)'; ctx.fillRect(mx - fw * .45, 0, 2, H); ctx.fillRect(0, ty - fw * .4, W, 2);
+  ctx.fillStyle = '#b08a4a'; ctx.beginPath(); ctx.ellipse(mx + fw * .9, ty + fw * 2.4, 2.6 * s, 8 * s, 0, 0, TAU); ctx.fill();   // the window latch
   ctx.globalAlpha = 1;
 }
 
-function naveVP() { return { x: W * .62, y: Math.max(30, G.y0 * .45) }; }
 function drawNave() {
-  const s = G.rh / 26, vp = naveVP(), hw = W * .62;
-  ctx.globalAlpha = stage(0, .3); ctx.fillStyle = '#07080e'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
-  // the rose window at the far end of the nave, deep red and blue, brightening on the drone
-  const rA = stage(.45, .9);
-  if (rA > .01) {
-    const R = Math.min(G.y0 * .32, 46 * s) + 6, x = vp.x, y = vp.y;
-    ctx.save(); ctx.globalAlpha = rA;
-    ctx.globalCompositeOperation = 'lighter';
-    const halo = ctx.createRadialGradient(x, y, R * .5, x, y, R * 4);
-    halo.addColorStop(0, `rgba(140,60,90,${.25 + NV.pulse * .25})`); halo.addColorStop(1, 'rgba(60,40,90,0)');
-    ctx.fillStyle = halo; ctx.fillRect(x - R * 4, y - R * 4, R * 8, R * 8);
-    ctx.globalCompositeOperation = 'source-over';
-    for (let i = 0; i < 12; i++) {
-      const a0 = i / 12 * TAU, a1 = (i + 1) / 12 * TAU;
-      ctx.fillStyle = i % 2 ? `rgba(150,30,50,${.75 + NV.pulse * .25})` : `rgba(40,60,170,${.75 + NV.pulse * .25})`;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, R, a0, a1); ctx.closePath(); ctx.fill();
-    }
-    ctx.fillStyle = `rgba(230,180,80,${.8})`; ctx.beginPath(); ctx.arc(x, y, R * .26, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#0b0b12'; ctx.lineWidth = Math.max(1.5, R * .07);
-    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .26, y + Math.sin(a) * R * .26); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(x, y, R * .62, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.stroke();
+  const s = G.rh / 26;
+  ctx.globalAlpha = stage(0, .3); ctx.fillStyle = '#07060b'; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = stage(.12, .55); if (NV.img) ctx.drawImage(NV.img, 0, 0);
+  // the rose window brightens on the drone
+  const rA = stage(.4, .9);
+  if (rA > .01 && NV.rose) {
+    const { x, y, r } = NV.rose;
+    ctx.save(); ctx.globalAlpha = rA; ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, r * .3, x, y, r * 4.5);
+    g.addColorStop(0, `rgba(170,70,120,${.22 + NV.pulse * .3})`); g.addColorStop(1, 'rgba(60,40,110,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - r * 4.5, y - r * 4.5, r * 9, r * 9);
+    const g2 = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g2.addColorStop(0, `rgba(255,220,180,${.15 + NV.pulse * .3})`); g2.addColorStop(1, 'rgba(255,200,170,0)');
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
     ctx.restore();
   }
-  // bays of the nave receding to the window: piers, pointed arches, clerestory lancets
-  const stone = '#1b1a24', lit = '#2a2633';
-  ctx.globalAlpha = stage(.15, .55);
-  for (let k = 7; k >= 0; k--) {
-    const f = 1 / (1 + k * .55), f2 = 1 / (1 + (k + 1) * .55);
-    const xl = vp.x - hw * f, xr = vp.x + hw * f, floorY = vp.y + (H * 1.15 - vp.y) * f, topY = vp.y - (vp.y + 260 * s) * f, pw = 26 * s * f;
-    const xl2 = vp.x - hw * f2, xr2 = vp.x + hw * f2, topY2 = vp.y - (vp.y + 260 * s) * f2;
-    // clerestory lancet between this bay and the next, lit by the moon
-    for (const [a, b] of [[xl, xl2], [xr2, xr]]) {
-      const lx = (a + b) / 2, lw = Math.abs(b - a) * .22, ly = (topY + topY2) / 2 + 20 * s * f;
-      ctx.fillStyle = 'rgba(110,135,190,.35)';
-      ctx.beginPath(); ctx.moveTo(lx - lw / 2, ly + 60 * s * f); ctx.lineTo(lx - lw / 2, ly); ctx.quadraticCurveTo(lx, ly - lw * 1.6, lx + lw / 2, ly); ctx.lineTo(lx + lw / 2, ly + 60 * s * f); ctx.closePath(); ctx.fill();
-    }
-    ctx.fillStyle = k % 2 ? stone : lit;
-    ctx.fillRect(xl - pw / 2, topY, pw, floorY - topY); ctx.fillRect(xr - pw / 2, topY, pw, floorY - topY);
-    ctx.strokeStyle = '#25222e'; ctx.lineWidth = Math.max(1, 5 * s * f);
-    ctx.beginPath(); ctx.moveTo(xl, topY); ctx.quadraticCurveTo(xl + (xr - xl) * .1, topY - (xr - xl) * .55, vp.x, topY - (xr - xl) * .5);
-    ctx.quadraticCurveTo(xr - (xr - xl) * .1, topY - (xr - xl) * .55, xr, topY); ctx.stroke();
-  }
-  // stone floor running away under the arches
-  const fg = ctx.createLinearGradient(0, vp.y, 0, H);
-  fg.addColorStop(0, 'rgba(20,18,26,0)'); fg.addColorStop(1, 'rgba(36,30,36,.9)');
-  ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(vp.x - hw * .12, vp.y + (H - vp.y) * .1); ctx.lineTo(-W * .2, H); ctx.lineTo(W * 1.2, H); ctx.lineTo(vp.x + hw * .12, vp.y + (H - vp.y) * .1); ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 1;
-  // moonlight falling through the high windows, with incense drifting in it
+  // moonlight falling from the high windows across the nave
   const sA = stage(.55, 1);
-  if (sA > .01) {
+  if (sA > .01 && NV.rays) {
     ctx.save(); ctx.globalAlpha = sA; ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 4; i++) {
-      const x0 = vp.x + (i - 1.5) * W * .18, y0 = 0, w0 = 30 * s;
-      const g = ctx.createLinearGradient(x0, y0, x0 - W * .12, H);
-      g.addColorStop(0, `rgba(140,165,220,${.07 + .03 * Math.sin(now * .3 + i)})`); g.addColorStop(1, 'rgba(140,165,220,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + w0, y0); ctx.lineTo(x0 - W * .12 + w0 * 3, H); ctx.lineTo(x0 - W * .12, H); ctx.closePath(); ctx.fill();
-    }
+    NV.rays.forEach((p, i) => {
+      const g = ctx.createLinearGradient(p[0][0], p[0][1], p[3][0], p[3][1]);
+      g.addColorStop(0, `rgba(140,165,225,${.1 + .04 * Math.sin(now * .3 + i * 1.7)})`); g.addColorStop(1, 'rgba(140,165,225,0)');
+      ctx.fillStyle = g; ctx.beginPath(); p.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.fill();
+    });
     ctx.restore();
   }
+  // the altar candles
+  ctx.globalAlpha = stage(.3, .7);
+  for (const [x, y] of NV.altar || []) {
+    const fl = .8 + .2 * Math.sin(now * 11 + x), R = 10 * s * fl;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, 'rgba(255,200,110,.6)'); g.addColorStop(1, 'rgba(255,160,70,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - R, y - R, R * 2, R * 2); ctx.restore();
+    ctx.fillStyle = 'rgba(255,236,180,.95)'; ctx.beginPath(); ctx.ellipse(x, y, 1 * s, 2.2 * s * fl, 0, 0, TAU); ctx.fill();
+  }
+  // incense drifting in the light
   ctx.globalAlpha = stage(.4, .9);
   for (const m of NV.smoke) {
     const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r);
     g.addColorStop(0, `rgba(170,165,185,${.06 * m.life})`); g.addColorStop(1, 'rgba(170,165,185,0)');
     ctx.fillStyle = g; ctx.fillRect(m.x - m.r, m.y - m.r, m.r * 2, m.r * 2);
   }
-  ctx.globalAlpha = 1;
   // the votive stand: every chant note lights one candle, and each burns down slowly
-  const cA = stage(.2, .6), stX = W * .82, stY = horizonY() + (H - horizonY()) * .55, sw = 150 * s;
-  ctx.globalAlpha = cA;
+  const stX = W * .82, stY = horizonY() + (H - horizonY()) * .55, sw = 150 * s;
+  ctx.globalAlpha = stage(.2, .6);
   const lc = NV.candles.filter(c => c.lit).length;
   const pool = ctx.createRadialGradient(stX, stY, 0, stX, stY, 220 * s);
   pool.addColorStop(0, `rgba(255,170,80,${.05 + lc * .012})`); pool.addColorStop(1, 'rgba(255,170,80,0)');
@@ -2040,6 +1984,25 @@ function drawNave() {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+// the palace, tinted by the hour: warm stone in the last sun, then blue dusk with the windows lit
+function drawPalace(d) {
+  if (!GD.palace) return;
+  const t = GD.tmp.getContext('2d');
+  t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, GD.tmp.width, GD.tmp.height);
+  t.drawImage(GD.palace, 0, 0);
+  t.globalCompositeOperation = 'source-atop';
+  t.fillStyle = mixC('#ffa860', '#20234a', d, .18 + .5 * d); t.fillRect(0, 0, GD.tmp.width, GD.tmp.height);
+  ctx.drawImage(GD.tmp, 0, GD.palaceTop);
+  for (const w of GD.wins) {
+    const on = clamp((d - .25 - w.k * .45) * 4, 0, 1); if (on <= 0) continue;
+    ctx.fillStyle = `rgba(255,200,120,${(w.door ? .55 : .85) * on})`;
+    ctx.beginPath();
+    if (w.arched) { ctx.moveTo(w.x, w.y + w.h); ctx.lineTo(w.x, w.y + w.r); ctx.arc(w.x + w.w / 2, w.y + w.r, w.r, Math.PI, 0); ctx.lineTo(w.x + w.w, w.y + w.h); }
+    else ctx.rect(w.x, w.y, w.w, w.h);
+    ctx.closePath(); ctx.fill();
+  }
 }
 
 function seaHorizon() { return Math.max(20, G.y0 * .72); }
@@ -2147,16 +2110,7 @@ function drawGarden() {
   ctx.globalAlpha = stage(0, .3); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
   drawStars(.5 * stage(.7, 1));
   // the palace across the garden, its windows lit as dusk deepens
-  ctx.globalAlpha = stage(.15, .5);
-  if (GD.palace) {
-    ctx.drawImage(GD.palace, 0, GD.palaceTop);
-    for (const w of GD.wins) {
-      const on = clamp((d - .3 - w.k * .5) * 4, 0, 1);
-      ctx.fillStyle = on > 0 ? `rgba(255,205,130,${.85 * on})` : 'rgba(0,0,0,.2)';
-      ctx.fillRect(w.x, GD.palaceTop + w.y, w.w, w.h);
-    }
-  }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = stage(.15, .5); drawPalace(d); ctx.globalAlpha = 1;
   // the long pool, holding the colour of the sky
   ctx.globalAlpha = stage(.1, .45);
   const poolTop = G.y1 + 4 * s;
@@ -2222,7 +2176,7 @@ mechBtn.addEventListener('click', () => setMech(!MECH.on));
 function placeMech() {
   if (!MECH.on || !G.rh) return;
   const narrow = W < 760;
-  const w = narrow ? W - 32 : Math.min(460, W * .38), h = Math.round(w * 340 / 460);
+  const w = narrow ? W - 32 : Math.min(460, W * .38), h = Math.round(w * 300 / 460);
   let top = narrow ? G.y1 + 10 : G.y0 + Math.max(0, (G.y1 - G.y0 - h) / 2);
   if (top + h > H - 50) top = Math.max(G.hb + 8, H - 50 - h);
   Object.assign(mechEl.style, { width: w + 'px', height: h + 'px', top: top + 'px', left: (narrow ? 16 : W - w - 20) + 'px' });
@@ -2230,174 +2184,429 @@ function placeMech() {
   mechCv.width = Math.round(w * d); mechCv.height = Math.round(h * d);
   MECH.w = w; MECH.h = h; MECH.d = d;
 }
-// the next hole to reach the comb (the highest note, if several sound together)
-function mechNext() {
-  const p = pT;
-  for (let t = Math.floor(p * 2) + 1; t <= Math.floor(p * 2) + 16; t++) {
-    const base = mod(t, 2 * L) * 16;
-    for (let r = N - 1; r >= 0; r--) if (notes.has(base + r)) return { r, t };
-  }
-  return null;
-}
-function mechOnPluck(r) { if (r === MECH.r) MECH.pluckT = now; }
-
-function wrapText(c, text, x, y, maxW, lh) {
-  const words = text.split(' '); let line = '';
-  for (const w of words) {
-    const test = line ? line + ' ' + w : w;
-    if (c.measureText(test).width > maxW && line) { c.fillText(line, x, y); line = w; y += lh; } else line = test;
-  }
-  if (line) c.fillText(line, x, y);
-  return y + lh;
-}
-
+// Inside the box: the real mechanism in a three-quarter cutaway, all fifteen channels at once.
+// The paper slides toward the viewer along the floor of the box. A star wheel rests on the paper over each channel;
+// where a hole passes beneath it, its lower point drops in and the moving paper rolls the wheel a quarter turn,
+// and its upper point flicks the comb tooth above it. Every wheel and tooth here moves with the real strip.
+const ringT = new Float64Array(N).fill(-10);
+function mechOnPluck(r) { ringT[r] = now; }
 function drawMech() {
   if (!MECH.on || !MECH.w) return;
-  // follow the next note: hold on the last one while it rings, then move on
-  if (MECH.t == null || (pT > MECH.t / 2 + .05 && now - MECH.pluckT > .45) || pT < MECH.t / 2 - 9) {
-    const nx = mechNext(); if (nx) { MECH.r = nx.r; MECH.t = nx.t; }
-  }
-  const c = mctx, w = MECH.w, h = MECH.h, k = w / 460, ink = '#2f435b', faint = 'rgba(47,67,91,.35)', red = '#a5402c';
-  c.setTransform(MECH.d, 0, 0, MECH.d, 0, 0);
-  c.clearRect(0, 0, w, h);
+  const c = mctx, w = MECH.w, h = MECH.h, Wd = 460, Hd = 300, k = w / Wd;
+  c.setTransform(MECH.d, 0, 0, MECH.d, 0, 0); c.clearRect(0, 0, w, h);
   c.save(); c.scale(k, k);
-  const Wd = 460, Hd = 340;
-  c.fillStyle = '#efe5cf'; c.fillRect(0, 0, Wd, Hd);
-  c.strokeStyle = 'rgba(47,67,91,.5)'; c.lineWidth = 1; c.strokeRect(6.5, 6.5, Wd - 13, Hd - 13);
-  const f = FREQ[MECH.r], name = NAMES[MECH.r];
-  c.fillStyle = ink; c.font = `700 14px ${FONT}`; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
-  c.fillText('How it plays', 18, 27);
-  c.textAlign = 'right'; c.font = `500 13px ${FONT}`;
-  c.fillText(`${name}  ·  ${Math.round(f)} Hz`, Wd - 18, 27);
+  // projection: x runs along the comb (low notes left), y is up, z runs toward the viewer
+  const X0 = 62, Y0 = 200, DX = 19, KX = .58, KY = .4;
+  const P = (x, y, z) => [X0 + x + z * KX, Y0 - y + z * KY];
+  const poly = pts => { c.beginPath(); pts.forEach(([x, y, z], i) => { const [a, b] = P(x, y, z); i ? c.lineTo(a, b) : c.moveTo(a, b); }); c.closePath(); };
+  const xL = -14, xR = 14 * DX + 14, zB = -86, zF = 84, PXZ = 42;   // paper edges, and paper travel in px per beat
+  // the dark inside of the box, lit from the front
+  const bg = c.createRadialGradient(Wd * .45, Hd * .7, 20, Wd * .45, Hd * .6, Wd * .75);
+  bg.addColorStop(0, '#3a2a1e'); bg.addColorStop(1, '#130d09');
+  c.fillStyle = bg; c.fillRect(0, 0, Wd, Hd);
+  // back wall and floor, in wood
+  const wood = (x1, y1, x2, y2, a, b) => { const g = c.createLinearGradient(x1, y1, x2, y2); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+  poly([[xL - 10, -16, zB - 6], [xR + 10, -16, zB - 6], [xR + 10, 70, zB - 6], [xL - 10, 70, zB - 6]]);
+  c.fillStyle = wood(0, 40, 0, 200, '#4a3221', '#2c1d13'); c.fill();
+  poly([[xL - 10, -16, zB - 6], [xR + 10, -16, zB - 6], [xR + 10, -16, zF + 20], [xL - 10, -16, zF + 20]]);
+  c.fillStyle = wood(0, 150, 0, 300, '#5a3d27', '#3a2717'); c.fill();
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1;
+  for (let x = xL; x < xR + 10; x += 22) { const [a, b] = P(x, -16, zB - 6), [a2, b2] = P(x, -16, zF + 20); c.beginPath(); c.moveTo(a, b); c.lineTo(a2, b2); c.stroke(); }
 
-  // engagement: u is how far (in beats) the next hole still has to travel to the star wheel
-  const u = MECH.t != null ? MECH.t / 2 - pT : 9;
-  const eng = clamp((.3 - u) / .3, 0, 1);              // 0 → 1 as the paper rolls the wheel through a quarter turn
-  const ring = Math.exp(-(now - MECH.pluckT) * 3.2) * (now >= MECH.pluckT ? 1 : 0);
-  const stage1 = u > 0 && u < 2, stage2 = eng > 0 && eng < 1, stage3 = ring > .15, stage4 = ring > .05;
+  // the paper strip with this moment's holes, sliding toward the viewer
+  poly([[xL, 0, zB], [xR, 0, zB], [xR, 0, zF], [xL, 0, zF]]);
+  c.fillStyle = wood(0, 120, 0, 260, '#e6dcc4', '#f4ecd8'); c.fill();
+  c.strokeStyle = 'rgba(47,67,91,.18)';
+  for (let i = 0; i < N; i++) { const [a, b] = P(i * DX, 0, zB), [a2, b2] = P(i * DX, 0, zF); c.beginPath(); c.moveTo(a, b); c.lineTo(a2, b2); c.stroke(); }
+  for (let t = Math.floor((pT - 2.1) * 2); t <= Math.ceil((pT + 2.1) * 2); t++) {
+    const z = (pT - t / 2) * PXZ; if (z < zB || z > zF) continue;
+    if (t % 2 === 0) { const [a, b] = P(xL, 0, z), [a2, b2] = P(xR, 0, z); c.strokeStyle = 'rgba(47,67,91,.14)'; c.beginPath(); c.moveTo(a, b); c.lineTo(a2, b2); c.stroke(); }
+    const base = mod(t, 2 * L) * 16;
+    for (let i = 0; i < N; i++) if (notes.has(base + i)) {
+      const [a, b] = P(i * DX, 0, z);
+      c.fillStyle = '#20150d'; c.beginPath(); c.ellipse(a, b, 4.6, 3, 0, 0, TAU); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(a, b, 4.6, 3, 0, .1 * Math.PI, .9 * Math.PI); c.stroke();
+    }
+  }
+  // the comb's base block, screwed to the back of the box; teeth reach forward over the wheels
+  const zBase = i => -54 - (N - 1 - i) * 1.6, TY = 29;
+  poly([[xL + 4, TY + 3, zBase(0) - 10], [xR - 4, TY + 3, zBase(N - 1) - 10], [xR - 4, TY + 3, zBase(N - 1)], [xL + 4, TY + 3, zBase(0)]]);
+  c.fillStyle = '#9aa1a8'; c.fill();
+  poly([[xL + 4, TY + 3, zBase(0)], [xR - 4, TY + 3, zBase(N - 1)], [xR - 4, TY - 9, zBase(N - 1)], [xL + 4, TY - 9, zBase(0)]]);
+  c.fillStyle = '#5d646b'; c.fill();
+  for (const fx of [.15, .5, .85]) { const x = xL + 4 + (xR - xL - 8) * fx, [a, b] = P(x, TY + 3, zBase(Math.round(fx * 14)) - 5); c.fillStyle = '#c99c47'; c.beginPath(); c.ellipse(a, b, 3, 2, 0, 0, TAU); c.fill(); }
 
-  // ---- side view
-  const PX = 52, py = 92, wx = 172, wy = 110, R = 16;            // px per beat, paper line, star wheel centre
-  // soundboard and comb block
-  const sbY = 172;
-  c.fillStyle = '#b78a5c'; c.fillRect(22, sbY, 236, 12);
-  c.strokeStyle = 'rgba(80,50,25,.45)'; for (let x = 26; x < 256; x += 9) { c.beginPath(); c.moveTo(x, sbY + 2); c.quadraticCurveTo(x + 4, sbY + 6, x + 2, sbY + 10); c.stroke(); }
-  c.strokeStyle = ink; c.lineWidth = 1.2; c.strokeRect(22, sbY, 236, 12);
-  c.fillStyle = '#8d949b'; c.fillRect(40, 122, 32, sbY - 122); c.strokeRect(40, 122, 32, sbY - 122);
-  c.beginPath(); c.arc(56, 152, 3, 0, TAU); c.stroke(); c.beginPath(); c.moveTo(54, 152); c.lineTo(58, 152); c.stroke();
-  // the steel tooth: pressed down by the wheel, then ringing (motion exaggerated and slowed so the eye can follow it)
-  const x0 = 72, tipX = wx + 4, ty = wy + R + 3;
-  const press = stage2 ? Math.sin(eng * Math.PI * .5) * 7 : 0;
-  const visHz = 3 + 7 * (MECH.r / (N - 1));
-  const disp = press + ring * 7 * Math.sin((now - MECH.pluckT) * TAU * visHz);
-  const tg = c.createLinearGradient(0, ty - 3, 0, ty + 3);
-  tg.addColorStop(0, '#59616a'); tg.addColorStop(.5, '#e8eef2'); tg.addColorStop(1, '#5c6268');
-  c.fillStyle = tg; c.strokeStyle = ink; c.lineWidth = 1;
-  c.beginPath();
-  for (let i = 0; i <= 20; i++) { const q = i / 20, x = x0 + (tipX - x0) * q, y = ty - 2.5 + disp * q * q; i ? c.lineTo(x, y) : c.moveTo(x, y); }
-  for (let i = 20; i >= 0; i--) { const q = i / 20, x = x0 + (tipX - x0) * q, y = ty + 2.5 + disp * q * q; c.lineTo(x, y); }
-  c.closePath(); c.fill(); c.stroke();
-  if (ring > .05) {   // the blur of the vibrating tip
-    c.strokeStyle = `rgba(47,67,91,${.25 * ring})`; c.setLineDash([2, 2]);
-    c.beginPath(); c.moveTo(x0, ty - 2.5); c.quadraticCurveTo((x0 + tipX) / 2, ty - 2.5, tipX, ty - 2.5 - 7 * ring); c.stroke();
-    c.beginPath(); c.moveTo(x0, ty + 2.5); c.quadraticCurveTo((x0 + tipX) / 2, ty + 2.5, tipX, ty + 2.5 + 7 * ring); c.stroke();
-    c.setLineDash([]);
+  // fifteen channels: wheel on the paper, tooth above it
+  const sounding = [];
+  for (let i = 0; i < N; i++) {
+    const x = i * DX;
+    // how far this channel's next hole still has to travel to its wheel
+    let u = 9;
+    for (let t = Math.floor(pT * 2) - 1; t <= Math.floor(pT * 2) + 3; t++) if (notes.has(mod(t, 2 * L) * 16 + i)) { const uu = t / 2 - pT; if (uu > -.06 && uu < u) u = uu; }
+    const eng = clamp((.3 - u) / .3, 0, 1), ringA = now >= ringT[i] ? Math.exp(-(now - ringT[i]) * 2.8) : 0;
+    if (ringA > .2) sounding.push(i);
+    // the star wheel stands upright on the paper (its plane faces along the comb)
+    const ang = eng * Math.PI / 2, cy = 13, R = 12;
+    const pts = [];
+    for (let q = 0; q < 8; q++) { const phi = ang - Math.PI / 2 + q * Math.PI / 4, rr = q % 2 ? 4.5 : R; pts.push([x, cy + Math.sin(phi) * rr, Math.cos(phi) * rr]); }
+    poly(pts);
+    c.fillStyle = ringA > .05 ? `rgb(${226 + 29 * ringA | 0},${176 + 40 * ringA | 0},${88 + 50 * ringA | 0})` : '#b88a3e';
+    c.fill(); c.strokeStyle = '#5a3f15'; c.lineWidth = .8; c.stroke();
+    const [ax, ay] = P(x, cy, 0); c.fillStyle = '#3a2a12'; c.beginPath(); c.arc(ax, ay, 1.6, 0, TAU); c.fill();
+    // the tooth: pushed up by the wheel's upper point, then ringing (slowed down so the eye can follow)
+    const press = eng > 0 && eng < 1 ? Math.sin(eng * Math.PI / 2) * 3.5 : 0;
+    const visHz = 2.5 + 6 * i / (N - 1), dT = now - ringT[i];
+    const lift = press + ringA * 4 * Math.sin(dT * TAU * visHz);
+    const zb = zBase(i), zt = 2, hw = 3.4;
+    c.beginPath();
+    const seg = 10;
+    for (let q = 0; q <= seg; q++) { const f = q / seg, [a, b] = P(x - hw, TY + lift * f * f, zb + (zt - zb) * f); q ? c.lineTo(a, b) : c.moveTo(a, b); }
+    for (let q = seg; q >= 0; q--) { const f = q / seg, [a, b] = P(x + hw, TY + lift * f * f, zb + (zt - zb) * f); c.lineTo(a, b); }
+    c.closePath();
+    const [g1x, g1y] = P(x - hw, TY, 0), [g2x, g2y] = P(x + hw, TY, 0);
+    const tg = c.createLinearGradient(g1x, g1y, g2x, g2y);
+    tg.addColorStop(0, ringA > .05 ? '#f3d38a' : '#6c737a'); tg.addColorStop(.5, '#f2f6f8'); tg.addColorStop(1, ringA > .05 ? '#b8862c' : '#6c737a');
+    c.fillStyle = tg; c.fill();
+    if (ringA > .05) {
+      const [tx, ty] = P(x, TY + lift, zt);
+      const gl = c.createRadialGradient(tx, ty, 0, tx, ty, 18);
+      gl.addColorStop(0, `rgba(255,214,140,${.55 * ringA})`); gl.addColorStop(1, 'rgba(255,190,110,0)');
+      c.fillStyle = gl; c.fillRect(tx - 18, ty - 18, 36, 36);
+    }
   }
-  // the star wheel: four points, turned a quarter turn per hole
-  const ang = -eng * Math.PI / 2 + Math.PI / 4 * 0;
-  c.save(); c.translate(wx, wy); c.rotate(ang);
-  c.fillStyle = '#c99c47'; c.strokeStyle = ink; c.lineWidth = 1.1;
-  c.beginPath();
-  for (let i = 0; i < 4; i++) {
-    const a = i * Math.PI / 2 - Math.PI / 2;
-    c.lineTo(Math.cos(a - .5) * R * .45, Math.sin(a - .5) * R * .45);
-    c.lineTo(Math.cos(a) * R, Math.sin(a) * R);
-    c.lineTo(Math.cos(a + .5) * R * .45, Math.sin(a + .5) * R * .45);
+  // the feed rollers at the front, turned by the crank
+  for (const ry of [6, -6]) {
+    const [a1, b1] = P(xL - 6, ry, zF - 16), [a2, b2] = P(xR + 6, ry, zF - 16);
+    c.strokeStyle = ry > 0 ? '#3e3e44' : '#2a2a2e'; c.lineWidth = 9; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(a1, b1); c.lineTo(a2, b2); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(a1, b1 - 2); c.lineTo(a2, b2 - 2); c.stroke();
+    c.lineCap = 'butt';
   }
-  c.closePath(); c.fill(); c.stroke();
-  c.fillStyle = '#efe5cf'; c.beginPath(); c.arc(0, 0, 2.6, 0, TAU); c.fill(); c.stroke();
-  c.restore();
-  // the paper strip, moving left, with this note's holes
-  c.fillStyle = '#fbf4e2'; c.fillRect(14, py, 252, 5);
-  c.strokeStyle = ink; c.lineWidth = 1; c.beginPath(); c.moveTo(14, py); c.lineTo(266, py); c.moveTo(14, py + 5); c.lineTo(266, py + 5); c.stroke();
-  for (let t = Math.floor((pT - 3) * 2); t <= Math.ceil((pT + 2) * 2); t++) {
-    if (!notes.has(mod(t, 2 * L) * 16 + MECH.r)) continue;
-    const hx = wx + (t / 2 - pT) * PX;
-    if (hx < 16 || hx > 262) continue;
-    c.fillStyle = '#efe5cf'; c.fillRect(hx - 5, py - .5, 10, 6);
-    c.strokeStyle = ink; c.beginPath(); c.moveTo(hx - 5, py); c.lineTo(hx - 5, py + 5); c.moveTo(hx + 5, py); c.lineTo(hx + 5, py + 5); c.stroke();
+  { // the crank on the side of the box
+    const [hx, hy] = P(xR + 22, 0, zF - 16), ca = pT / 2 * TAU;
+    c.fillStyle = '#c99c47'; c.beginPath(); c.arc(hx, hy, 7, 0, TAU); c.fill();
+    const kx = hx + Math.cos(ca) * 16, ky = hy + Math.sin(ca) * 16;
+    c.strokeStyle = '#c99c47'; c.lineWidth = 3; c.beginPath(); c.moveTo(hx, hy); c.lineTo(kx, ky); c.stroke();
+    c.fillStyle = '#7b2c1b'; c.beginPath(); c.arc(kx, ky, 4.5, 0, TAU); c.fill();
   }
-  // the feed rollers that the crank drives
-  for (const ry of [py - 7, py + 12]) {
-    c.fillStyle = '#4a4a50'; c.beginPath(); c.arc(34, ry, 6.5, 0, TAU); c.fill(); c.stroke();
-    c.strokeStyle = '#d8dde2'; c.beginPath(); const ra = (ry < py ? -1 : 1) * pT * 2.2; c.moveTo(34, ry); c.lineTo(34 + Math.cos(ra) * 5, ry + Math.sin(ra) * 5); c.stroke(); c.strokeStyle = ink;
-  }
-  c.fillStyle = faint; c.font = `500 10.5px ${FONT}`; c.textAlign = 'left';
-  c.fillText('← paper moves this way', 52, py + 20);
-  // sound leaving the board
-  if (ring > .03) for (let i = 0; i < 3; i++) {
-    const ph = ((now - MECH.pluckT) * 1.4 + i / 3) % 1, rr = 10 + ph * 34;
-    c.strokeStyle = `rgba(47,67,91,${(1 - ph) * .5 * ring})`; c.beginPath(); c.arc(258, sbY + 6, rr, -Math.PI * .4, Math.PI * .4); c.stroke();
-  }
-  // numbered callouts, the active step in red
-  const callout = (n, x, y, lx, ly, on) => {
-    c.strokeStyle = on ? red : faint; c.lineWidth = 1; c.beginPath(); c.moveTo(lx, ly); c.lineTo(x, y); c.stroke();
-    c.fillStyle = '#efe5cf'; c.beginPath(); c.arc(lx, ly, 8, 0, TAU); c.fill(); c.stroke();
-    c.fillStyle = on ? red : ink; c.font = `700 10.5px ${FONT}`; c.textAlign = 'center'; c.fillText(String(n), lx, ly + 3.6);
+  // a few quiet labels
+  const label = (text, x, y, z, lx, ly, align) => {
+    const [a, b] = P(x, y, z);
+    c.strokeStyle = 'rgba(239,229,207,.45)'; c.lineWidth = 1; c.beginPath(); c.moveTo(a, b); c.lineTo(lx, ly); c.stroke();
+    c.fillStyle = 'rgba(239,229,207,.9)'; c.font = `500 11.5px ${FONT}`; c.textAlign = align; c.fillText(text, lx + (align === 'left' ? 4 : -4), ly + 4);
   };
-  callout(1, 120, py, 112, 62, stage1);
-  callout(2, wx + 10, wy - 10, 210, 66, stage2);
-  callout(3, 124, ty + 2, 112, 152, stage3);
-  callout(4, 150, sbY + 12, 150, 206, stage4);
-
-  // ---- the steps, in words
-  const lx0 = 282, lw = 166;
-  const steps = [
-    ['Paper strip', 'Each hole is a note. The crank pulls the paper past the star wheels.', stage1],
-    ['Star wheel', 'A point drops into a hole; the moving paper turns the wheel.', stage2],
-    ['Steel tooth', `Its far point flicks the tooth, which rings ${Math.round(f)} times a second.`, stage3],
-    ['Soundboard', 'The wood under the comb carries the ringing into the air.', stage4]
-  ];
-  let y = 54;
-  steps.forEach(([title, body, on], i) => {
-    c.textAlign = 'left'; c.fillStyle = on ? red : ink; c.font = `700 12px ${FONT}`;
-    c.fillText(`${i + 1}  ${title}`, lx0, y);
-    c.fillStyle = on ? ink : 'rgba(47,67,91,.7)'; c.font = `400 11px ${FONT}`;
-    y = wrapText(c, body, lx0 + 14, y + 14, lw - 14, 13) + 7;
-  });
-
-  // ---- the comb from above: one tooth per note, shorter teeth ring higher
-  const cy0 = 258, cx0 = 22;
-  c.strokeStyle = faint; c.beginPath(); c.moveTo(14, 246.5); c.lineTo(Wd - 14, 246.5); c.stroke();
-  c.fillStyle = '#8d949b'; c.fillRect(cx0, cy0 + 40, 15 * 9, 6);
-  for (let r = 0; r < N; r++) {
-    const len = 40 - r * 1.9, x = cx0 + 3 + r * 9, on = r === MECH.r;
-    c.fillStyle = on ? '#c99c47' : '#b5bcc2';
-    const jit = on ? ring * 1.2 * Math.sin(now * 60) : 0;
-    c.fillRect(x + jit, cy0 + 40 - len, 5, len);
-  }
-  c.fillStyle = ink; c.font = `400 10.5px ${FONT}`; c.textAlign = 'left';
-  c.fillText('C4  262 Hz', cx0, cy0 + 60); c.textAlign = 'right'; c.fillText('C6  1047 Hz', cx0 + 135, cy0 + 60);
-  c.textAlign = 'left'; c.fillStyle = 'rgba(47,67,91,.7)'; c.fillText('Shorter teeth ring higher.', 176, cy0 + 8);
-
-  // ---- the sound itself: the live waveform from the speakers
-  const sx = 176, sy = cy0 + 16, sw = Wd - 18 - sx, sh = 40;
-  c.strokeStyle = faint; c.strokeRect(sx + .5, sy + .5, sw, sh);
-  c.beginPath(); c.moveTo(sx, sy + sh / 2 + .5); c.lineTo(sx + sw, sy + sh / 2 + .5); c.stroke();
-  if (analyser) {
-    if (!MECH.buf || MECH.buf.length !== analyser.fftSize) MECH.buf = new Float32Array(analyser.fftSize);
-    analyser.getFloatTimeDomainData(MECH.buf);
-    const b = MECH.buf; let start = 0;
-    for (let i = 1; i < b.length / 2; i++) if (b[i - 1] < 0 && b[i] >= 0) { start = i; break; }
-    let peak = .02; for (let i = 0; i < b.length; i++) peak = Math.max(peak, Math.abs(b[i]));
-    const n = Math.min(600, b.length - start), gain = Math.min(10, .9 / peak) * (sh / 2);
-    c.strokeStyle = ink; c.lineWidth = 1.1; c.beginPath();
-    for (let i = 0; i < n; i++) { const x = sx + i / (n - 1) * sw, yv = sy + sh / 2 - b[start + i] * gain; i ? c.lineTo(x, yv) : c.moveTo(x, yv); }
-    c.stroke();
-  }
-  c.fillStyle = 'rgba(47,67,91,.7)'; c.font = `400 10.5px ${FONT}`; c.textAlign = 'left';
-  c.fillText('The sound, as it leaves the speakers', sx, sy + sh + 13);
+  label('steel comb', 3 * DX, TY + 3, zBase(3) - 6, 20, 76, 'left');
+  label('star wheels', 0, 13, -10, 20, 128, 'left');
+  label('paper, moving toward you', 5 * DX, 0, 64, 70, 288, 'left');
+  label('crank and rollers', xR + 22, 0, zF - 16, Wd - 14, 288, 'right');
+  // what is sounding now
+  c.fillStyle = 'rgba(239,229,207,.95)'; c.font = `700 13px ${FONT}`; c.textAlign = 'left';
+  c.fillText('Inside the box', 16, 24);
+  c.font = `500 12px ${FONT}`; c.textAlign = 'right';
+  const now3 = sounding.slice(-3).reverse().map(i => `${noteName(i)} ${Math.round(noteFreq(i))} Hz`).join('   ');
+  c.fillStyle = 'rgba(239,229,207,.75)'; c.fillText(now3, Wd - 16, 24);
+  c.fillStyle = 'rgba(239,229,207,.6)'; c.font = `400 11px ${FONT}`; c.textAlign = 'left';
+  c.fillText('A wheel drops into a hole, the paper turns it, and it flicks the tooth above.', 16, 42);
   c.restore();
+}
+
+// ================================================================ architecture, drawn once per layout
+// ---- the cathedral for Dies Irae: a gothic nave in true one-point perspective
+function buildNaveArt(s) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const q = c.getContext('2d');
+  const cx = W * .6, cy = Math.max(60, G.y0 - 18 * s), f = Math.max(W, H) * .33, eye = 2.4;   // horizon just above the paper, so the rose window and vaults show
+  const pj = (X, Y, Z) => [cx + f * X / Z, cy - f * (Y - eye) / Z];
+  const path = pts => { q.beginPath(); pts.forEach((p, i) => { const [x, y] = pj(p[0], p[1], p[2]); i ? q.lineTo(x, y) : q.moveTo(x, y); }); q.closePath(); };
+  const fill = (pts, col) => { path(pts); q.fillStyle = col; q.fill(); };
+  const line = (pts, col, w) => { q.beginPath(); pts.forEach((p, i) => { const [x, y] = pj(p[0], p[1], p[2]); i ? q.lineTo(x, y) : q.moveTo(x, y); }); q.strokeStyle = col; q.lineWidth = w; q.stroke(); };
+  const pointed = (u) => Math.pow(1 - Math.abs(u), .55);          // the profile of a pointed arch, 1 at the apex
+  const A = 6, BAY = 6, Z0 = 3.4, NB = 8, ZE = Z0 + NB * BAY, SPRING = 24, VAULT = 31;
+  q.fillStyle = '#08070c'; q.fillRect(0, 0, W, H);
+
+  // the apse wall: three lancets, the rose window, the altar
+  fill([[-A, 0, ZE], [A, 0, ZE], [A, VAULT, ZE], [-A, VAULT, ZE]], '#17151d');
+  const lancet = (x0, w0, y0, y1, Z, glass) => {
+    const pts = [[x0 - w0 / 2, y0, Z], [x0 + w0 / 2, y0, Z]];
+    for (let i = 0; i <= 12; i++) { const u = 1 - i / 6; pts.push([x0 + u * w0 / 2, y1 - w0 * .9 + w0 * 1.1 * pointed(u), Z]); }
+    path(pts);
+    const [gx, gy0] = pj(x0, y1, Z), [, gy1] = pj(x0, y0, Z);
+    const g = q.createLinearGradient(gx, gy0, gx, gy1);
+    glass.forEach((col, i) => g.addColorStop(i / (glass.length - 1), col));
+    q.fillStyle = g; q.fill();
+    q.strokeStyle = '#0c0b10'; q.lineWidth = Math.max(1, f * .08 / Z); q.stroke();
+    for (let y = y0 + 1.6; y < y1 - w0; y += 1.6) line([[x0 - w0 / 2, y, Z], [x0 + w0 / 2, y, Z]], 'rgba(10,10,16,.8)', Math.max(.6, f * .03 / Z));
+    line([[x0, y0, Z], [x0, y1 - w0 * .4, Z]], 'rgba(10,10,16,.8)', Math.max(.6, f * .03 / Z));
+  };
+  for (const [x, col] of [[-2.7, ['#3a4f9a', '#7a2236', '#2e3f86']], [0, ['#8a2a3c', '#2d4291', '#c08a2a']], [2.7, ['#3a4f9a', '#7a2236', '#2e3f86']]]) lancet(x, 1.7, 3, 15.5, ZE - .01, col);
+  {
+    const [rx, ry] = pj(0, 21.8, ZE - .01), R = f * 3.7 / ZE;
+    for (let i = 0; i < 16; i++) {
+      const a0 = i / 16 * TAU, a1 = (i + 1) / 16 * TAU;
+      q.fillStyle = ['#8e2236', '#2a3f95', '#b8862c', '#2a3f95'][i % 4];
+      q.beginPath(); q.moveTo(rx, ry); q.arc(rx, ry, R, a0, a1); q.closePath(); q.fill();
+    }
+    q.fillStyle = '#d6a43c'; q.beginPath(); q.arc(rx, ry, R * .22, 0, TAU); q.fill();
+    q.strokeStyle = '#0c0b10'; q.lineWidth = Math.max(1.2, R * .06);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; q.beginPath(); q.moveTo(rx + Math.cos(a) * R * .22, ry + Math.sin(a) * R * .22); q.lineTo(rx + Math.cos(a) * R, ry + Math.sin(a) * R); q.stroke(); }
+    for (const k of [.22, .55, 1]) { q.beginPath(); q.arc(rx, ry, R * k, 0, TAU); q.stroke(); }
+    for (let i = 0; i < 8; i++) { const a = (i + .5) / 8 * TAU; q.beginPath(); q.arc(rx + Math.cos(a) * R * .77, ry + Math.sin(a) * R * .77, R * .14, 0, TAU); q.stroke(); }
+    NV.rose = { x: rx, y: ry, r: R };
+  }
+  // the altar, with a cross and two tall candles
+  fill([[-1.8, 0, ZE - 3], [1.8, 0, ZE - 3], [1.8, 1.1, ZE - 3], [-1.8, 1.1, ZE - 3]], '#bdb3a2');
+  fill([[-1.8, 1.1, ZE - 3], [1.8, 1.1, ZE - 3], [1.8, 1.1, ZE - 2.2], [-1.8, 1.1, ZE - 2.2]], '#d8cfbd');
+  line([[0, 1.1, ZE - 2.6], [0, 3.4, ZE - 2.6]], '#c7a050', Math.max(1, f * .09 / ZE)); line([[-.5, 2.8, ZE - 2.6], [.5, 2.8, ZE - 2.6]], '#c7a050', Math.max(1, f * .09 / ZE));
+  NV.altar = [];
+  for (const x of [-1.3, 1.3]) { line([[x, 1.1, ZE - 2.6], [x, 2.2, ZE - 2.6]], '#e8e0cc', Math.max(1, f * .07 / ZE)); NV.altar.push(pj(x, 2.35, ZE - 2.6)); }
+
+  // the floor: polished stone in a checker, receding to the altar
+  for (let z = ZE; z > 1.2; z -= 1.3) for (let x = -A; x < A; x += 1.3) {
+    const odd = (Math.round(x / 1.3) + Math.round(z / 1.3)) % 2;
+    const shade = clamp(1 - z / ZE, 0, 1);
+    fill([[x, 0, z], [x + 1.3, 0, z], [x + 1.3, 0, z - 1.3], [x, 0, z - 1.3]], odd ? `rgb(${30 + shade * 22 | 0},${27 + shade * 18 | 0},${34 + shade * 18 | 0})` : `rgb(${18 + shade * 10 | 0},${16 + shade * 8 | 0},${22 + shade * 10 | 0})`);
+  }
+  // the vault: webbing between transverse ribs, then the ribs, diagonals and bosses
+  const arch3 = (z, n) => { const pts = []; for (let i = 0; i <= n; i++) { const u = -1 + 2 * i / n; pts.push([u * A, SPRING + (VAULT - SPRING) * pointed(u), z]); } return pts; };
+  for (let k = NB - 1; k >= 0; k--) {
+    const za = Z0 + k * BAY, zb = za + BAY;
+    path([...arch3(za, 24), ...arch3(zb, 24).reverse()]); q.fillStyle = k % 2 ? '#1a1820' : '#1d1b24'; q.fill();
+    const diag = (s0) => { const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24, u = 2 * t - 1; pts.push([s0 * u * A, SPRING + (VAULT - SPRING) * pointed(u), za + BAY * t]); } return pts; };
+    line(diag(1), '#3b3646', Math.max(1, f * .16 / (za + BAY / 2))); line(diag(-1), '#3b3646', Math.max(1, f * .16 / (za + BAY / 2)));
+    line([[0, VAULT, za], [0, VAULT, zb]], '#34303e', Math.max(1, f * .1 / (za + BAY / 2)));
+    const [bx, by] = pj(0, VAULT, za + BAY / 2); q.fillStyle = '#7a6440'; q.beginPath(); q.arc(bx, by, Math.max(1.5, f * .25 / (za + BAY / 2)), 0, TAU); q.fill();
+  }
+  for (let k = NB; k >= 0; k--) line(arch3(Z0 + k * BAY, 24), '#433e50', Math.max(1, f * .24 / (Z0 + k * BAY)));
+
+  // the two side walls, bay by bay from the altar forward: arcade, triforium, clerestory, then the piers
+  for (let k = NB - 1; k >= 0; k--) {
+    const za = Z0 + k * BAY + .5, zb = Z0 + (k + 1) * BAY - .5, zm = (za + zb) / 2, lw = d => Math.max(.7, f * d / zm);
+    for (const sd of [-1, 1]) {
+      const X = sd * A;
+      fill([[X, 0, za], [X, 0, zb], [X, SPRING, zb], [X, SPRING, za]], '#211e29');
+      // arcade opening into the dark aisle, with an aisle window glimpsed beyond
+      const arc = [[X, 0, za], [X, 0, zb]];
+      for (let i = 0; i <= 16; i++) { const u = 1 - i / 8; arc.push([X, 7.6 + 4.6 * pointed(u), zm + u * (zb - za) / 2]); }
+      fill(arc, '#0b0a10');
+      fill([[X + sd * 4, 3, zm - .7], [X + sd * 4, 3, zm + .7], [X + sd * 4, 7.5, zm + .7], [X + sd * 4, 7.5, zm - .7]], 'rgba(60,80,140,.35)');
+      line([[X, 12.6, za], [X, 12.6, zb]], '#3a3546', lw(.08));
+      // triforium: a small arcade of four openings
+      for (let j = 0; j < 4; j++) {
+        const z1 = za + (zb - za) * (j + .15) / 4, z2 = za + (zb - za) * (j + .85) / 4, zc = (z1 + z2) / 2;
+        const t = [[X, 13.2, z1], [X, 13.2, z2]];
+        for (let i = 0; i <= 8; i++) { const u = 1 - i / 4; t.push([X, 14.8 + 1 * pointed(u), zc + u * (z2 - z1) / 2]); }
+        fill(t, '#0d0c12');
+      }
+      line([[X, 16.3, za], [X, 16.3, zb]], '#3a3546', lw(.08));
+      // clerestory: two lancets and an oculus, lit by the moon
+      for (const off of [-.22, .22]) {
+        const z1 = zm + off * (zb - za) - (zb - za) * .12, z2 = zm + off * (zb - za) + (zb - za) * .12, zc = (z1 + z2) / 2;
+        const l = [[X, 17, z1], [X, 17, z2]];
+        for (let i = 0; i <= 10; i++) { const u = 1 - i / 5; l.push([X, 21.6 + 1.4 * pointed(u), zc + u * (z2 - z1) / 2]); }
+        path(l); q.fillStyle = 'rgba(96,120,190,.75)'; q.fill();
+        q.strokeStyle = '#0c0b10'; q.lineWidth = lw(.05); q.stroke();
+      }
+      const [ox, oy] = pj(X, 23.6, zm); q.fillStyle = 'rgba(150,60,90,.7)'; q.beginPath(); q.ellipse(ox, oy, Math.max(1, f * .3 / zm * .5), Math.max(1, f * .55 / zm), 0, 0, TAU); q.fill();
+    }
+    // pews in this bay, either side of the centre aisle
+    for (let z = zb; z > za; z -= 1.5) {
+      for (const [x1, x2] of [[-A + .9, -1.3], [1.3, A - .9]]) {
+        fill([[x1, 0, z], [x2, 0, z], [x2, 1.05, z], [x1, 1.05, z]], '#24170f');
+        line([[x1, 1.05, z], [x2, 1.05, z]], '#5a3a24', lw(.05));
+        fill([[x1, .5, z - .35], [x2, .5, z - .35], [x2, .5, z], [x1, .5, z]], '#2e1d12');
+      }
+    }
+    // the clustered pier at the front of this bay: a core with shafts running up into the vault
+    for (const sd of [-1, 1]) {
+      const X = sd * (A - .35), z = Z0 + k * BAY, w = .55;
+      fill([[X, 0, z - w], [X, 0, z + w], [X, SPRING, z + w], [X, SPRING, z - w]], '#2d2a36');
+      for (const dz of [-.4, 0, .4]) line([[X - sd * .12, 0, z + dz], [X - sd * .12, SPRING + .4, z + dz]], dz ? '#3c3848' : '#47425a', Math.max(.6, f * .07 / z));
+      line([[X, 7.6, z - w], [X, 7.6, z + w]], '#5a5268', Math.max(1, f * .14 / z));
+      line([[X, SPRING, z - w], [X, SPRING, z + w]], '#5a5268', Math.max(1, f * .14 / z));
+      fill([[X, 0, z - w * 1.25], [X, 0, z + w * 1.25], [X, .7, z + w * 1.25], [X, .7, z - w * 1.25]], '#35313f');
+    }
+  }
+  // moonlight shafts from the left clerestory, kept as polygons so they can shimmer
+  NV.rays = [];
+  for (let k = 1; k < 6; k++) {
+    const z = Z0 + k * BAY + BAY / 2;
+    NV.rays.push([pj(-A, 22, z - .6), pj(-A, 22, z + .6), pj(A * .5, 0, z + 2.6), pj(A * .5, 0, z + .6)]);
+  }
+  NV.img = c;
+}
+
+// ---- the palace for Pachelbel: a baroque façade with a domed centre, giant columns and a garden front
+function buildPalaceArt(s) {
+  const base = Math.round(G.y0 + 26 * s), u = Math.max(2, (base - 10) / 64), cx = W * .58;
+  const c = document.createElement('canvas'); c.width = W; c.height = base + 4;
+  const q = c.getContext('2d');
+  const X = v => cx + v * u, Y = v => base - v * u, HW = clamp(Math.round(W * .46 / u), 48, 96);   // wings reach most of the way across
+  const rect = (x0, y0, x1, y1, col) => { q.fillStyle = col; q.fillRect(X(x0), Y(y1), (x1 - x0) * u, (y1 - y0) * u); };
+  const STONE = '#d9c6a6', STONE2 = '#c9b391', SHADOW = '#8d7a62', DEEP = '#5d5146', SLATE = '#535a6a', SLATE2 = '#3e4452', GLASS = '#2a2d3a';
+  GD.wins = [];
+  const win = (x0, y0, w, h, arched, ped) => {
+    // frame, glass with glazing bars, keystone and a pediment
+    rect(x0 - .35, y0 - .3, x0 + w + .35, y0 + h + (arched ? w / 2 : 0) + .2, STONE2);
+    q.fillStyle = GLASS; q.beginPath(); q.moveTo(X(x0), Y(y0));
+    q.lineTo(X(x0), Y(y0 + h)); if (arched) q.arc(X(x0 + w / 2), Y(y0 + h), w / 2 * u, Math.PI, 0); q.lineTo(X(x0 + w), Y(y0 + h)); q.lineTo(X(x0 + w), Y(y0)); q.closePath(); q.fill();
+    q.strokeStyle = 'rgba(200,185,160,.55)'; q.lineWidth = Math.max(.6, u * .12);
+    q.beginPath(); q.moveTo(X(x0 + w / 2), Y(y0)); q.lineTo(X(x0 + w / 2), Y(y0 + h)); for (let yy = y0 + h / 3; yy < y0 + h; yy += h / 3) { q.moveTo(X(x0), Y(yy)); q.lineTo(X(x0 + w), Y(yy)); } q.stroke();
+    rect(x0 + w / 2 - .35, y0 + h + (arched ? w / 2 : 0) - .2, x0 + w / 2 + .35, y0 + h + (arched ? w / 2 : 0) + .6, STONE);
+    const top = y0 + h + (arched ? w / 2 : 0) + .6;
+    if (ped === 'tri') { q.fillStyle = STONE; q.beginPath(); q.moveTo(X(x0 - .6), Y(top)); q.lineTo(X(x0 + w / 2), Y(top + 1.3)); q.lineTo(X(x0 + w + .6), Y(top)); q.closePath(); q.fill(); rect(x0 - .6, top - .25, x0 + w + .6, top, SHADOW); }
+    if (ped === 'seg') { q.fillStyle = STONE; q.beginPath(); q.ellipse(X(x0 + w / 2), Y(top), (w / 2 + .6) * u, 1.1 * u, 0, Math.PI, 0); q.fill(); rect(x0 - .6, top - .25, x0 + w + .6, top, SHADOW); }
+    GD.wins.push({ x: X(x0), y: Y(y0 + h + (arched ? w / 2 : 0)), w: w * u, h: (h + (arched ? w / 2 : 0)) * u, arched, r: w / 2 * u, k: Math.random() });
+  };
+  const cornice = (x0, x1, y, depth) => { rect(x0 - .5, y, x1 + .5, y + depth, STONE); rect(x0 - .5, y - .35, x1 + .5, y, SHADOW); for (let x = x0; x < x1; x += .7) rect(x, y + depth * .35, x + .35, y + depth * .7, STONE2); };
+  const balustrade = (x0, x1, y) => {
+    rect(x0, y, x1, y + .45, STONE); rect(x0, y + 2.1, x1, y + 2.6, STONE);
+    q.fillStyle = STONE2; for (let x = x0 + .3; x < x1 - .2; x += .62) { q.beginPath(); q.ellipse(X(x), Y(y + 1.27), .2 * u, .82 * u, 0, 0, TAU); q.fill(); }
+  };
+  const statue = (x, y) => {
+    rect(x - .7, y, x + .7, y + 1.4, STONE2);
+    q.fillStyle = STONE; q.beginPath(); q.ellipse(X(x), Y(y + 3.1), .55 * u, 1.5 * u, 0, 0, TAU); q.fill();
+    q.beginPath(); q.arc(X(x), Y(y + 5), .45 * u, 0, TAU); q.fill();
+    q.strokeStyle = STONE; q.lineWidth = .35 * u; q.beginPath(); q.moveTo(X(x + .4), Y(y + 4)); q.lineTo(X(x + 1.2), Y(y + 5)); q.stroke();
+  };
+  const urn = (x, y) => { rect(x - .6, y, x + .6, y + .9, STONE2); q.fillStyle = STONE; q.beginPath(); q.ellipse(X(x), Y(y + 1.9), .75 * u, 1 * u, 0, 0, TAU); q.fill(); rect(x - .15, y + 2.8, x + .15, y + 3.6, STONE); };
+  // mansard roofs over the wings, with dormers and chimneys
+  for (const sd of [-1, 1]) {
+    const a = sd < 0 ? -(HW - 1) : 15, b = sd < 0 ? -15 : HW - 1;
+    q.fillStyle = SLATE; q.beginPath(); q.moveTo(X(a), Y(27.5)); q.lineTo(X(a + 1.6), Y(33)); q.lineTo(X(b - 1.6), Y(33)); q.lineTo(X(b), Y(27.5)); q.closePath(); q.fill();
+    rect(a + 1.6, 33, b - 1.6, 33.5, SLATE2);
+    for (let x = a + 3.2; x < b - 2; x += 4.6) { rect(x - .8, 28.5, x + .8, 31, STONE2); q.fillStyle = GLASS; q.beginPath(); q.ellipse(X(x), Y(29.8), .5 * u, .65 * u, 0, 0, TAU); q.fill(); q.fillStyle = SLATE2; q.beginPath(); q.ellipse(X(x), Y(31), 1 * u, .6 * u, 0, Math.PI, 0); q.fill(); }
+    for (const x of [a + 8, b - 8]) { rect(x - 1, 32, x + 1, 37, STONE2); rect(x - 1.3, 37, x + 1.3, 37.6, STONE); }
+  }
+  // the wings: rusticated ground floor, a tall piano nobile, an attic, cornice and balustrade
+  for (const sd of [-1, 1]) {
+    const a = sd < 0 ? -HW : 14, b = sd < 0 ? -14 : HW;
+    rect(a, 0, b, 27.5, STONE);
+    for (let y = .9; y < 10; y += .9) { rect(a, y, b, y + .12, SHADOW); for (let x = a + ((Math.round(y / .9) % 2) ? 1.2 : 0); x < b; x += 2.4) rect(x, y - .78, x + .1, y, SHADOW); }
+    rect(a, 10, b, 10.6, STONE2); rect(a, 9.8, b, 10, DEEP);
+    const bays = Math.round((b - a) / 4.6);
+    for (let i = 0; i < bays; i++) {
+      const x = a + (i + .5) * (b - a) / bays;
+      win(x - 1.1, 2.6, 2.2, 4.6, false, null);
+      win(x - 1.1, 11.6, 2.2, 7.2, true, i % 2 ? 'seg' : 'tri');
+      win(x - .9, 22.2, 1.8, 1.7, false, null);
+      if (i > 0) { const px = a + i * (b - a) / bays; rect(px - .35, 10.6, px + .35, 25, STONE2); rect(px - .5, 24.4, px + .5, 25, STONE); }
+    }
+    // end pavilions, with quoins and a segmental pediment
+    const pa = sd < 0 ? -HW : HW - 5.5, pb = sd < 0 ? -(HW - 5.5) : HW;
+    for (let y = 0; y < 27; y += 1.4) { rect(pa, y, pa + ((y / 1.4) % 2 ? .9 : 1.5), y + 1.2, STONE2); rect(pb - ((y / 1.4) % 2 ? .9 : 1.5), y, pb, y + 1.2, STONE2); }
+    cornice(a, b, 25, 1.2);
+    balustrade(a, b, 26.2);
+    for (let x = a + 4.6; x < b - 1; x += 9.2) statue(x, 28.8);
+    urn(a + .5, 28.8); urn(b - .5, 28.8);
+  }
+  // the central pavilion: three doors, six giant columns, entablature and pediment
+  rect(-14, 0, 14, 28.5, STONE);
+  for (let y = .9; y < 10; y += .9) rect(-14, y, 14, y + .12, SHADOW);
+  for (const x of [-7, 0, 7]) { q.fillStyle = DEEP; q.beginPath(); q.moveTo(X(x - 1.8), Y(0)); q.lineTo(X(x - 1.8), Y(6)); q.arc(X(x), Y(6), 1.8 * u, Math.PI, 0); q.lineTo(X(x + 1.8), Y(0)); q.closePath(); q.fill(); rect(x - .3, 7.4, x + .3, 8.3, STONE2); GD.wins.push({ x: X(x - 1.8), y: Y(7.8), w: 3.6 * u, h: 7.8 * u, arched: true, r: 1.8 * u, k: .2, door: true }); }
+  for (const x of [-7, 0, 7]) win(x - 1.2, 12, 2.4, 7.4, true, 'tri');
+  for (const x of [-7, 0, 7]) { q.fillStyle = GLASS; q.beginPath(); q.ellipse(X(x), Y(22.6), 1 * u, .75 * u, 0, 0, TAU); q.fill(); q.strokeStyle = STONE2; q.lineWidth = .3 * u; q.stroke(); }
+  for (const x of [-12.6, -10.4, -4, 4, 10.4, 12.6]) {
+    // a fluted shaft with a little swell, an Attic base and a Corinthian capital
+    const g = q.createLinearGradient(X(x - .8), 0, X(x + .8), 0);
+    g.addColorStop(0, SHADOW); g.addColorStop(.35, '#efe0c4'); g.addColorStop(1, '#a8937a');
+    q.fillStyle = g; q.beginPath(); q.moveTo(X(x - .7), Y(10.6)); q.quadraticCurveTo(X(x - .82), Y(17), X(x - .6), Y(24.6)); q.lineTo(X(x + .6), Y(24.6)); q.quadraticCurveTo(X(x + .82), Y(17), X(x + .7), Y(10.6)); q.closePath(); q.fill();
+    q.strokeStyle = 'rgba(90,75,60,.35)'; q.lineWidth = Math.max(.5, u * .08);
+    for (const dx of [-.35, 0, .35]) { q.beginPath(); q.moveTo(X(x + dx), Y(11.2)); q.lineTo(X(x + dx * .9), Y(24.4)); q.stroke(); }
+    rect(x - 1, 10.6, x + 1, 11.1, STONE2); rect(x - .85, 11.1, x + .85, 11.4, STONE);
+    q.fillStyle = STONE2; q.beginPath(); q.moveTo(X(x - .65), Y(24.6)); q.lineTo(X(x - 1.1), Y(25.9)); q.lineTo(X(x + 1.1), Y(25.9)); q.lineTo(X(x + .65), Y(24.6)); q.closePath(); q.fill();
+    q.fillStyle = SHADOW; for (const dx of [-.55, 0, .55]) { q.beginPath(); q.arc(X(x + dx), Y(25.15), .26 * u, 0, TAU); q.fill(); }
+    q.strokeStyle = STONE; q.lineWidth = .18 * u; for (const sx of [-1, 1]) { q.beginPath(); q.arc(X(x + sx * .9), Y(25.7), .25 * u, 0, TAU); q.stroke(); }
+  }
+  cornice(-14.6, 14.6, 26, .8); rect(-14.6, 26.8, 14.6, 27.7, STONE2); cornice(-15, 15, 27.7, 1);
+  // the pediment, with a cartouche and garlands in the tympanum
+  q.fillStyle = STONE; q.beginPath(); q.moveTo(X(-15.4), Y(28.7)); q.lineTo(X(0), Y(36.2)); q.lineTo(X(15.4), Y(28.7)); q.closePath(); q.fill();
+  q.fillStyle = STONE2; q.beginPath(); q.moveTo(X(-13.4), Y(29.4)); q.lineTo(X(0), Y(35.2)); q.lineTo(X(13.4), Y(29.4)); q.closePath(); q.fill();
+  q.strokeStyle = SHADOW; q.lineWidth = .3 * u; q.beginPath(); q.moveTo(X(-15.4), Y(28.7)); q.lineTo(X(0), Y(36.2)); q.lineTo(X(15.4), Y(28.7)); q.stroke();
+  q.fillStyle = STONE; q.beginPath(); q.ellipse(X(0), Y(31.4), 1.6 * u, 1.3 * u, 0, 0, TAU); q.fill(); q.strokeStyle = SHADOW; q.stroke();
+  q.lineWidth = .28 * u; q.strokeStyle = STONE;
+  for (const sx of [-1, 1]) { q.beginPath(); q.moveTo(X(sx * 1.6), Y(31.4)); q.quadraticCurveTo(X(sx * 4.5), Y(29.6), X(sx * 7.5), Y(31)); q.quadraticCurveTo(X(sx * 9.5), Y(30), X(sx * 11), Y(30.2)); q.stroke(); }
+  statue(0, 36); statue(-14.6, 28.8); statue(14.6, 28.8);
+  // the drum and dome, with its lantern
+  rect(-8.2, 36, 8.2, 43.2, STONE);
+  for (const x of [-6, -3, 0, 3, 6]) { win(x - .65, 37.5, 1.3, 3, true, null); }
+  for (const x of [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]) rect(x - .25, 36.2, x + .25, 42.6, STONE2);
+  cornice(-8.4, 8.4, 42.6, .8);
+  const dg = q.createLinearGradient(X(-8.5), 0, X(8.5), 0);
+  dg.addColorStop(0, '#7f8798'); dg.addColorStop(.35, '#a8b0c0'); dg.addColorStop(1, '#4a5060');
+  q.fillStyle = dg; q.beginPath(); q.ellipse(X(0), Y(43.4), 8.4 * u, 11.4 * u, 0, Math.PI, 0); q.fill();
+  q.strokeStyle = 'rgba(40,44,56,.45)'; q.lineWidth = Math.max(.6, u * .14);
+  for (let i = 1; i < 8; i++) { const a = Math.PI + i / 8 * Math.PI; q.beginPath(); q.moveTo(X(Math.cos(a) * 8.4), Y(43.4)); q.quadraticCurveTo(X(Math.cos(a) * 6), Y(51), X(0), Y(54.8)); q.stroke(); }
+  rect(-1.8, 54.4, 1.8, 59, STONE); for (const x of [-1, 0, 1]) rect(x - .2, 55.4, x + .2, 58, GLASS);
+  cornice(-2, 2, 58.6, .5);
+  q.fillStyle = '#7f8798'; q.beginPath(); q.ellipse(X(0), Y(59.2), 2 * u, 2.2 * u, 0, Math.PI, 0); q.fill();
+  q.fillStyle = '#c9a050'; q.beginPath(); q.arc(X(0), Y(62), .5 * u, 0, TAU); q.fill(); rect(-.08, 62.4, .08, 64.4, '#c9a050'); rect(-.5, 63.5, .5, 63.7, '#c9a050');
+  // steps up to the doors
+  for (let i = 0; i < 4; i++) rect(-10 - i * .6, -i * .5 - .5, 10 + i * .6, -i * .5, i % 2 ? STONE2 : STONE);
+  GD.palace = c; GD.palaceTop = 0;
+  GD.tmp = document.createElement('canvas'); GD.tmp.width = W; GD.tmp.height = c.height;
+}
+
+// ---- the building across the street, for Gymnopédie: a Paris apartment block seen through a rainy window
+function buildParisArt(s) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const q = c.getContext('2d');
+  RN.wins = [];
+  const roofY = Math.max(24 * s, G.y0 * .36), floorH = 50 * s, street = horizonY();
+  // the façade runs right across the view; the paper strip hides its middle floors
+  const fx0 = -20, fx1 = W + 20;
+  // mansard roof: zinc, with dormers and a long row of chimney pots
+  q.fillStyle = '#39414f'; q.beginPath(); q.moveTo(fx0, roofY + 34 * s); q.lineTo(fx0 + 30 * s, roofY); q.lineTo(fx1 - 30 * s, roofY); q.lineTo(fx1, roofY + 34 * s); q.closePath(); q.fill();
+  q.strokeStyle = 'rgba(160,175,195,.18)'; q.lineWidth = 1;
+  for (let x = fx0 + 30 * s; x < fx1; x += 9 * s) { q.beginPath(); q.moveTo(x, roofY); q.lineTo(x, roofY + 34 * s); q.stroke(); }
+  for (let x = fx0 + 60 * s; x < fx1 - 40 * s; x += 150 * s) {
+    q.fillStyle = '#5b4a40'; q.fillRect(x, roofY - 26 * s, 34 * s, 28 * s);
+    q.fillStyle = '#4a3c34'; q.fillRect(x - 3 * s, roofY - 28 * s, 40 * s, 4 * s);
+    for (let p = 0; p < 6; p++) { q.fillStyle = '#9a5a3e'; q.fillRect(x + 2 * s + p * 5.4 * s, roofY - 36 * s, 3.6 * s, 9 * s); q.fillStyle = '#6e3e2a'; q.fillRect(x + 2 * s + p * 5.4 * s, roofY - 36 * s, 3.6 * s, 1.6 * s); }
+  }
+  for (let x = fx0 + 54 * s; x < fx1 - 30 * s; x += 48 * s) {
+    q.fillStyle = '#4a515e'; q.beginPath(); q.moveTo(x - 9 * s, roofY + 30 * s); q.lineTo(x - 9 * s, roofY + 12 * s); q.arc(x, roofY + 12 * s, 9 * s, Math.PI, 0); q.lineTo(x + 9 * s, roofY + 30 * s); q.closePath(); q.fill();
+    q.fillStyle = '#20232c'; q.fillRect(x - 5 * s, roofY + 13 * s, 10 * s, 15 * s);
+    RN.wins.push({ x: x - 5 * s, y: roofY + 13 * s, w: 10 * s, h: 15 * s, on: Math.random() < .4, ph: Math.random() * 6, warm: Math.random(), kind: 'dormer' });
+  }
+  // stone façade below the roof: cornice, floors of tall windows with wrought-iron balconies
+  const top = roofY + 34 * s;
+  q.fillStyle = '#b8ab95'; q.fillRect(fx0, top, fx1 - fx0, street - top);
+  q.fillStyle = '#d0c4ad'; q.fillRect(fx0, top, fx1 - fx0, 5 * s);
+  q.fillStyle = '#857965'; q.fillRect(fx0, top + 5 * s, fx1 - fx0, 2 * s);
+  for (let y = top + 10 * s; y < street; y += 6 * s) { q.fillStyle = 'rgba(110,98,80,.25)'; q.fillRect(fx0, y, fx1 - fx0, 1); }
+  let fl = 0;
+  for (let y = top + 12 * s; y < street - 20 * s; y += floorH, fl++) {
+    for (let x = fx0 + 40 * s; x < fx1 - 30 * s; x += 48 * s) {
+      const ww = 16 * s, wh = Math.min(floorH - 16 * s, 32 * s);
+      q.fillStyle = '#cfc3ac'; q.fillRect(x - 3 * s, y - 3 * s, ww + 6 * s, wh + 6 * s);
+      q.fillStyle = '#1e2029'; q.fillRect(x, y, ww, wh);
+      q.fillStyle = '#d6cbb5'; q.beginPath(); q.moveTo(x - 4 * s, y - 3 * s); q.lineTo(x + ww / 2, y - 8 * s); q.lineTo(x + ww + 4 * s, y - 3 * s); q.closePath(); q.fill();
+      RN.wins.push({ x, y, w: ww, h: wh, on: Math.random() < .45, ph: Math.random() * 6, warm: Math.random(), kind: 'win', fl });
+      // balcony railing
+      q.strokeStyle = '#1a1b20'; q.lineWidth = 1;
+      const by = y + wh - 8 * s;
+      q.beginPath(); q.moveTo(x - 4 * s, by); q.lineTo(x + ww + 4 * s, by); q.moveTo(x - 4 * s, y + wh + 1); q.lineTo(x + ww + 4 * s, y + wh + 1);
+      for (let bx = x - 3 * s; bx < x + ww + 4 * s; bx += 3 * s) { q.moveTo(bx, by); q.lineTo(bx, y + wh + 1); }
+      q.stroke();
+      for (let bx = x; bx < x + ww; bx += 6 * s) { q.beginPath(); q.arc(bx + 3 * s, by + 4 * s, 1.6 * s, 0, TAU); q.stroke(); }
+    }
+    q.fillStyle = '#c7baa3'; q.fillRect(fx0, y + floorH - 10 * s, fx1 - fx0, 3 * s);
+  }
+  // one window has a lamp and someone who moves past the curtain now and then
+  const cand = RN.wins.filter(w => w.kind === 'win' && w.y < G.y0 - 30 * s);
+  RN.figure = cand.length ? cand[Math.floor(cand.length / 2)] : null;
+  if (RN.figure) RN.figure.on = true;
+  // the street and the café awnings at its foot
+  const sg = q.createLinearGradient(0, street, 0, H);
+  sg.addColorStop(0, '#1b1d26'); sg.addColorStop(1, '#0b0c12'); q.fillStyle = sg; q.fillRect(0, street, W, H - street);
+  for (let x = fx0 + 30 * s; x < fx1; x += 190 * s) {
+    q.fillStyle = '#5a1f22'; q.beginPath(); q.moveTo(x, street - 30 * s); q.lineTo(x + 120 * s, street - 30 * s); q.lineTo(x + 128 * s, street - 18 * s); q.lineTo(x - 8 * s, street - 18 * s); q.closePath(); q.fill();
+    q.fillStyle = '#e8dcc0'; for (let sx = x; sx < x + 120 * s; sx += 16 * s) q.fillRect(sx, street - 30 * s, 8 * s, 12 * s);
+    RN.wins.push({ x: x + 6 * s, y: street - 16 * s, w: 108 * s, h: 14 * s, on: true, ph: Math.random() * 6, warm: 0, kind: 'cafe' });
+  }
+  RN.lamps = []; for (let x = 70 * s; x < W; x += 230 * s) RN.lamps.push({ x, y: street - 46 * s });
+  RN.facade = c;
 }
 
 function draw() {
@@ -2575,7 +2784,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTi
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
 
 // ---------------------------------------------------------------- boot
-if (!restore()) loadSong('twinkle'); else refreshUi();
+if (!restore()) loadSong('nearer'); else refreshUi();
 layout();
 let mechPref = null; try { mechPref = localStorage.getItem('paper-music-box-mech'); } catch (e) {}
 setMech(mechPref == null ? W >= 900 : mechPref === '1');
