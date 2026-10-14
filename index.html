@@ -38,6 +38,10 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:4px;border-ra
 .step:hover,.ghost:hover{border-color:var(--brass);background:var(--wash)}
 .len{min-width:4.2em;text-align:center;color:var(--paper)}
 .ghost{border:1px solid var(--line);border-radius:3px;padding:3px 10px;margin-left:10px;color:var(--paper);transition:border-color .15s,background .15s}
+.ghost[aria-pressed="true"]{border-color:var(--brass);background:var(--wash)}
+[hidden]{display:none!important}
+.mech{position:fixed;z-index:2;border-radius:3px;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45)}
+.mech canvas{width:100%;height:100%;display:block}
 @media (max-width:760px){
   .hud{padding:calc(12px + env(safe-area-inset-top,0px)) 16px 22px;gap:10px}
   .tools{align-items:flex-start}
@@ -60,6 +64,10 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:4px;border-ra
       <button class="song" id="song-ode" data-song="ode">Ode to Joy</button>
       <button class="song" id="song-frere" data-song="frere" title="Arranged as a three-voice round">Frère Jacques</button>
       <button class="song" id="song-nearer" data-song="nearer">Nearer, My God, to Thee</button>
+      <button class="song" id="song-gymno" data-song="gymno">Gymnopédie</button>
+      <button class="song" id="song-dies" data-song="dies">Dies Irae</button>
+      <button class="song" id="song-sailor" data-song="sailor">Drunken Sailor</button>
+      <button class="song" id="song-canon" data-song="canon">Pachelbel's Canon</button>
       <button class="song" id="song-blank" data-song="blank">Blank strip</button>
     </div>
     <div class="strip">
@@ -68,9 +76,11 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:4px;border-ra
       <span class="len" id="len" aria-live="polite">12 bars</span>
       <button class="step" id="len-plus" aria-label="Lengthen the strip by one bar">+</button>
       <button class="ghost" id="undo">Undo</button>
+      <button class="ghost" id="mech-toggle" aria-pressed="false">How it plays</button>
     </div>
   </div>
 </header>
+<aside class="mech" id="mech" hidden aria-label="A live cutaway of the music box mechanism"><canvas id="mechCv"></canvas></aside>
 
 <script>
 (() => {
@@ -131,6 +141,68 @@ const HYMN_BASS = 'C4:2 G4:1 A4:1 F4:1.5 F4:.5 F4:2 C4:2 E4:1 C4:1 G4:4 ' +
   'C4:2 G4:1 A4:1 F4:1.5 F4:.5 F4:2 G4:4 C4:4 ' +
   'C4:2 C4:1 C4:1 C4:4 C4:2 F4:1 C4:1 B4:1.5 C4:.5 G4:2 ' +
   'C4:2 G4:1 A4:1 F4:1.5 F4:.5 F4:2 G4:4 C4:4';
+const seqLen = str => str.trim().split(/\s+/).reduce((a, t) => a + (t.includes(':') ? parseFloat(t.split(':')[1]) : 1), 0);
+const tagged = (arr, v) => arr.map(([b, r]) => [b, r, v]);   // voices: 0 bass or drone, 1 melody, 2+ other parts
+
+// Satie, Gymnopédie No. 1 (1888): the first section, from the Mutopia edition (a Dover reprint), moved from D to C.
+// Three beats to a bar: the bass on the first beat, the chord on the second, the melody above. The middle section
+// needs a note this comb does not have in the same key, so the strip loops the first section.
+const GYM_MEL = 'r:12 r E5 G5 F5 E5 B4 A4 B4 C5 G4:3 E4:12 r E5 G5 F5 E5 B4 A4 B4 C5 G4:3 B4:3 E5:3 D4:9';
+function gymnopedie() {
+  const out = tagged(seq(GYM_MEL), 1), bars = [];
+  for (let i = 0; i < 16; i++) bars.push(i % 2 ? ['C4', 'E4 G4 B4'] : ['F4', 'C4 E4 A4']);
+  bars.push(['E4', 'G4 B4 E5'], ['A4', 'C5 E5'], ['D4', 'F4 A4'], ['D4', 'F4 A4 C5'], ['C4', 'G4']);
+  bars.forEach(([bass, chord], i) => {
+    out.push([i * 3, NAMES.indexOf(bass), 0]);
+    for (const n of chord.split(' ')) out.push([i * 3 + 1, NAMES.indexOf(n), 2]);
+  });
+  return out;
+}
+
+// Dies irae (13th-century sequence), the first verse, from the chant score on Wikipedia. It is in D Dorian, which
+// lies on the white keys. Sung twice: plain over a low drone, then with a second voice a fourth below, as in early organum.
+const DIES = ['F5 E5 F5 D5 E5 C5 D5 D5:2 r', 'F5 F5 G5 F5 E5 D5 C5 E5 F5 E5 D5:2 r', 'A4 C5 D5 D5 D5 C5 E5 F5 E5 D5:2 r'];
+function diesIrae() {
+  const out = [], D4 = NAMES.indexOf('D4'); let b = 0;
+  for (let pass = 0; pass < 2; pass++) for (const line of DIES) {
+    const ns = seq(line, b);
+    out.push([b, D4, 0], [ns[ns.length - 1][0], D4, 0]);
+    for (const [nb, r] of ns) { out.push([nb, r, 1]); if (pass) out.push([nb, r - 3, 2]); }
+    b += seqLen(line);
+  }
+  return out;
+}
+
+// What Shall We Do with the Drunken Sailor (a capstan shanty sung by the 1830s), D Dorian, from the score on German
+// Wikibooks. A beat here is an eighth note. A low note on the strong beats and a chord on the off-beats, like a squeezebox.
+const SAILOR = 'A4 A4:.5 A4:.5 A4 A4:.5 A4:.5 A4 D4 F4 A4 G4 G4:.5 G4:.5 G4 G4:.5 G4:.5 G4 C4 E4 G4 ' +
+  'A4 A4:.5 A4:.5 A4 A4:.5 A4:.5 A4 B4 C5 D5 C5 A4 G4 E4 D4:2 D4:2 ' +
+  'A4:2 A4:1.5 A4:.5 A4 D4 F4 A4 G4:2 G4:1.5 G4:.5 G4 C4 E4 G4 ' +
+  'A4:2 A4:1.5 A4:.5 A4 B4 C5 D5 C5 A4 G4 E4 D4:2 D4:2';
+function sailor() {
+  const out = tagged(seq(SAILOR), 1), CH = { D: ['D4', 'D5 F5 A5'], C: ['C4', 'C5 E5 G5'] };
+  const half = (b, ch) => { out.push([b, NAMES.indexOf(CH[ch][0]), 0]); for (const n of CH[ch][1].split(' ')) out.push([b + 2, NAMES.indexOf(n), 2]); };
+  'DCDXDCDX'.split('').forEach((h, bar) => {           // X: C for the first half of the bar, D minor for the second
+    const b0 = bar * 8;
+    if (h === 'X') { half(b0, 'C'); half(b0 + 4, 'D'); } else { half(b0, h); half(b0 + 4, h); }
+  });
+  return out;
+}
+
+// Pachelbel, Canon (c. 1694), from the Mutopia edition of the original parts for three violins and bass, moved from D to C.
+// A beat here is an eighth note. The violins all play one line, each entering two bars after the last, over an
+// eight-note bass that repeats every two bars. The first eight bars of the line loop, so the canon never ends.
+// (One low note in bar 6 is lifted an octave to fit the comb.)
+const CANON = 'E5:2 D5:2 C5:2 B4:2 A4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 F4:2 D4:2 ' +
+  'C4 E4 G4 F4 E4 C4 E4 D4 C4 A4 C4 G4 F4 A4 G4 F4 ' +
+  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5';
+const GROUND = 'C4:2 G4:2 A4:2 E4:2 F4:2 C4:2 F4:2 G4:2';
+function canon() {
+  const out = [];
+  for (let k = 0; k < 4; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
+  for (let v = 0; v < 3; v++) out.push(...tagged(seq(CANON, v * 16), v + 1));
+  return out;
+}
 const SONGS = {
   twinkle: { L: 48, tempo: 1.9, notes: () => [
     ...seq('C5 C5 G5 G5 A5 A5 G5:2 F5 F5 E5 E5 D5 D5 C5:2 G5 G5 F5 F5 E5 E5 D5:2 G5 G5 F5 F5 E5 E5 D5:2 C5 C5 G5 G5 A5 A5 G5:2 F5 F5 E5 E5 D5 D5 C5:2'),
@@ -140,11 +212,16 @@ const SONGS = {
     ...seq('CGCGCGCYGGGCCGCY'.split('').map(c => ODE_BASS[c]).join(' ')) ] },
   frere: { L: 32, tempo: 2.0, notes: () => [ ...seq(FJ, 0), ...seq(FJ_LOW, 8), ...seq(FJ, 16) ] },
   nearer: { L: 64, tempo: 1.6, notes: () => [...seq(HYMN), ...seq(HYMN_BASS)] },
+  gymno: { L: 63, meter: 3, tempo: 1.15, notes: gymnopedie },
+  dies: { L: 72, meter: 4, tempo: 1.5, notes: diesIrae },
+  sailor: { L: 64, meter: 8, tempo: 3.1, notes: sailor },
+  canon: { L: 64, meter: 8, tempo: 2.3, notes: canon },
   blank: { L: 32, tempo: 2.0, notes: () => [] }
 };
 
 // ---------------------------------------------------------------- state
-let L = 48;
+let L = 48, meter = 4;          // strip length in beats, beats to a bar
+let voiceOf = new Map();         // which part each preset note belongs to (bass, melody, ...)
 let notes = new Set();        // key = halfBeat * 16 + row
 let tapes = new Map();        // key -> {a, w}
 const holeBorn = new Map();   // key -> time punched (for the pop animation)
@@ -162,22 +239,22 @@ let now = 0;
 
 function loadSong(id, keepPos) {
   const s = SONGS[id];
-  songId = id; L = s.L; baseTempo = s.tempo;
+  songId = id; L = s.L; meter = s.meter || 4; baseTempo = s.tempo; voiceOf = new Map();
   sceneRestart = true;   // loading any song, even the current one, restarts its scene and reveal
   notes = new Set(); tapes = new Map(); holeBorn.clear();
-  for (const [b, r] of s.notes()) notes.add(mod(Math.round(b * 2), 2 * L) * 16 + r);
+  for (const [b, r, v] of s.notes()) { const k = mod(Math.round(b * 2), 2 * L) * 16 + r; notes.add(k); if (v != null) voiceOf.set(k, v); }
   if (!keepPos) pT = Math.round(pT / L) * L - 1.25;
   refreshUi(); save();
 }
-function snapshot() { return { L, notes: new Set(notes), tapes: new Map(tapes), songId, baseTempo }; }
+function snapshot() { return { L, meter, notes: new Set(notes), tapes: new Map(tapes), songId, baseTempo }; }
 function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 200) undoStack.shift(); }
 function undo() {
   const s = undoStack.pop(); if (!s) return;
-  L = s.L; notes = s.notes; tapes = s.tapes; songId = s.songId; baseTempo = s.baseTempo;
+  L = s.L; meter = s.meter || 4; notes = s.notes; tapes = s.tapes; songId = s.songId; baseTempo = s.baseTempo;
   refreshUi(); save(); tickSound(.12);
 }
 function setLength(newL) {
-  newL = clamp(newL, 8, 128); if (newL === L) return;
+  newL = clamp(newL, 2 * meter, 160); if (newL === L) return;
   pushUndo();
   const lim = newL * 2;
   for (const k of [...notes]) if ((k >> 4) >= lim) notes.delete(k);
@@ -185,7 +262,7 @@ function setLength(newL) {
   L = newL; refreshUi(); save();
 }
 function refreshUi() {
-  lenEl.textContent = (L / 4) + (L === 4 ? ' bar' : ' bars');
+  lenEl.textContent = (L / meter) + (L === meter ? ' bar' : ' bars');
   document.querySelectorAll('[data-song]').forEach(b => b.setAttribute('aria-pressed', b.dataset.song === songId ? 'true' : 'false'));
 }
 let saveTimer = 0;
@@ -193,7 +270,7 @@ function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
-      localStorage.setItem(STORE, JSON.stringify({ L, songId, baseTempo, n: [...notes],
+      localStorage.setItem(STORE, JSON.stringify({ L, meter, songId, baseTempo, n: [...notes],
         tp: [...tapes].map(([k, v]) => [k, +v.a.toFixed(2), +v.w.toFixed(2)]) }));
     } catch (e) { /* storage unavailable: the strip just won't persist */ }
   }, 250);
@@ -201,8 +278,8 @@ function save() {
 function restore() {
   try {
     const d = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (!d || !Array.isArray(d.n) || !(d.L >= 8 && d.L <= 128)) return false;
-    L = d.L; songId = d.songId || 'blank'; baseTempo = d.baseTempo || 2;
+    if (!d || !Array.isArray(d.n) || !(d.L >= 4 && d.L <= 160)) return false;
+    L = d.L; meter = d.meter || 4; songId = d.songId || 'blank'; baseTempo = d.baseTempo || 2;
     notes = new Set(d.n.filter(k => Number.isInteger(k) && (k >> 4) < 2 * L && (k & 15) < N));
     tapes = new Map((d.tp || []).map(([k, a, w]) => [k, { a, w }]));
     refreshUi();
@@ -238,7 +315,7 @@ function layout() {
     hub: { x: pick - 3.3 * rh, y: y0 + stripH + 2.75 * rh }, arm: 1.75 * rh,
     mm: { x: 16, y: H - 30, w: W - 32, h: 16 }
   };
-  buildDesk(); buildPaper(); buildScene();
+  buildDesk(); buildPaper(); buildScene(); placeMech();
 }
 const rowY = r => G.y0 + G.rh * (N - r);
 const stripX = t => G.pick + (t / 2 - mod(pT, L)) * G.col; // t = unwrapped half-beat index relative to wrapped position
@@ -302,6 +379,7 @@ function ensureAudio() {
   comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = .004; comp.release.value = .2;
   comp.connect(ac.destination);
   master = ac.createGain(); master.gain.value = .75; master.connect(comp);
+  analyser = ac.createAnalyser(); analyser.fftSize = 2048; master.connect(analyser);   // feeds the live waveform in the cutaway
   // a small wooden room: short, dense, slightly dark tail
   const conv = ac.createConvolver();
   const n = Math.floor(ac.sampleRate * 1.7), ib = ac.createBuffer(2, n, ac.sampleRate);
@@ -328,7 +406,7 @@ function noiseHit(t, type, freq, q, vol, len) {
 }
 function pluck(r, delay, vel, tIdx) {
   delay = delay || 0; vel = vel == null ? 1 : vel;
-  const fire = () => { tine[r] = 1; ripples.push({ x: G.pick, y: rowY(r), t: 0 }); ambNote(r, tIdx); };
+  const fire = () => { tine[r] = 1; ripples.push({ x: G.pick, y: rowY(r), t: 0 }); ambNote(r, tIdx); mechOnPluck(r); };
   if (delay > .004) setTimeout(fire, delay * 1000); else fire();
   if (!ac) return;
   const t = ac.currentTime + .012 + delay, f = FREQ[r];
@@ -419,7 +497,7 @@ function update(dt) {
   if (motorV > 0) {
     const dm = motorV * (1 + .015 * Math.sin(now * 2.3)) * dt;
     advance(dm, dt, 'motor');
-    energy = Math.max(0, energy - dm / 120);   // a full wind plays about 120 beats
+    energy = Math.max(0, energy - dm / (60 * baseTempo));   // a full wind plays for about a minute, whatever the tempo
     keyAng -= dm * .5;
   }
   fanAng += motorV * dt * 11;
@@ -544,9 +622,9 @@ function drawStrip() {
       ctx.fillStyle = 'rgba(160,120,60,.16)'; ctx.fillRect(x - col * .32, y0, col * .26, y1 - y0);
       ctx.fillStyle = 'rgba(80,50,20,.28)'; ctx.fillRect(x - col * .06 - 1, y0, 1.5, y1 - y0);
     }
-    if (tm % 8 === 0) {
+    if (tm % (2 * meter) === 0) {
       ctx.strokeStyle = 'rgba(47,67,91,.62)'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(47,67,91,.7)'; ctx.fillText(String(tm / 8 + 1), x + 3, y0 + rh * .62);
+      ctx.fillStyle = 'rgba(47,67,91,.7)'; ctx.fillText(String(tm / (2 * meter) + 1), x + 3, y0 + rh * .62);
     } else if (tm % 2 === 0) { ctx.strokeStyle = 'rgba(47,67,91,.3)'; ctx.lineWidth = .8; ctx.setLineDash([]); }
     else { ctx.strokeStyle = 'rgba(47,67,91,.2)'; ctx.lineWidth = .7; ctx.setLineDash([2, 3]); }
     ctx.beginPath(); ctx.moveTo(x, ya - rh * .25); ctx.lineTo(x, yb + rh * .25); ctx.stroke();
@@ -839,7 +917,7 @@ function drawMini() {
   const m = G.mm, p = mod(pT, L), n2 = 2 * L;
   ctx.font = `500 ${12}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = 'rgba(205,189,159,.8)';
-  ctx.fillText('Whole strip · ' + (L / 4) + ' bars · drag here to jump', m.x, m.y - 5);
+  ctx.fillText('Whole strip · ' + (L / meter) + ' bars · drag here to jump', m.x, m.y - 5);
   ctx.fillStyle = 'rgba(239,229,207,.85)'; rr(m.x, m.y, m.w, m.h, 2); ctx.fill();
   ctx.fillStyle = 'rgba(47,67,91,.9)';
   for (const k of notes) {
@@ -868,6 +946,7 @@ let ghost = null, sceneRestart = false;              // the previous song's scen
 const ghostAlpha = () => ghost ? ghost.a0 * Math.sqrt(smooth(ghost.rv / Math.max(.001, ghost.rv0 || 1))) : 0;
 // each scene keeps its own moving parts, so a dissolving scene and a new one can run side by side
 function clearScene(sc) {
+  if (SCENES4.includes(sc)) return clearScenes4(sc);
   if (sc === 'night') { noteStars = []; shooting = null; }
   else if (sc === 'fireworks') { rockets = []; sparks = []; smoke = []; launched.clear(); }
   else if (sc === 'bells') { bellRings = []; BV.swallows = []; BV.smoke = []; BV.houses.forEach(h => h.wins.forEach(w => { w.lit = false; })); }
@@ -906,7 +985,8 @@ function seeded(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 10
 const smooth = x => x * x * (3 - 2 * x);
 function horizonY() { return Math.min(H - 44, G.y1 + Math.max(28, (H - 44 - G.y1) * .45)); }
 function skyBand() { return { top: 10, bot: G.y0 - 10 }; }
-function sceneOf() { return { twinkle: 'night', ode: 'fireworks', frere: 'bells', nearer: 'lanterns' }[songId] || 'aurora'; }
+function sceneOf() { return { twinkle: 'night', ode: 'fireworks', frere: 'bells', nearer: 'lanterns', gymno: 'rain', dies: 'nave', sailor: 'sea', canon: 'garden' }[songId] || 'aurora'; }
+const SCENES4 = ['rain', 'nave', 'sea', 'garden'];
 const hillY = (i, x) => hills[i][clamp(Math.round(x / 8), 0, hills[i].length - 1)];
 
 function buildScene() {
@@ -1041,6 +1121,7 @@ function buildScene() {
     BV.cloudPre = paint('rgba(52,48,86,.55)', 'rgba(170,108,140,.6)');
     BV.cloudPost = paint('rgba(236,214,222,.5)', 'rgba(255,206,160,.7)');
   }
+  buildScenes4(rand, s, hz);
 }
 
 function updateAmb(dt) {
@@ -1120,6 +1201,7 @@ function updateAmb(dt) {
   for (const w of waterRings) w.t += dt;
   waterRings = waterRings.filter(w => w.t < 3);
   for (let i = 0; i < aur.length; i++) aur[i] *= Math.exp(-dt * .9);
+  updateScenes4(dt, s);
 }
 function fireY(r) { const sb = skyBand(); return sb.top + 12 + (1 - (r - 7) / 7) * Math.max(10, (sb.bot - sb.top) * .7); }
 function rocketPos(rk) {
@@ -1149,6 +1231,7 @@ function burst(x, y, r) {
 
 function ambNote(r, t) {
   const sc = sceneOf(), s = G.rh / 26, sb = skyBand();
+  if (SCENES4.includes(sc)) return ambNote4(sc, r, t != null ? voiceOf.get(mod(t, 2 * L) * 16 + r) : undefined, s);
   if (sc === 'night') {
     if (r >= 7) {
       // the melody becomes a constellation: across the sky in strip order, higher notes higher up
@@ -1620,13 +1703,701 @@ function renderScene(sc, reveal, alpha) {
   ctx.setTransform(LY.sd, 0, 0, LY.sd, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.clearRect(0, 0, W, H);
   try {
-    if (sc === 'night') drawNight(); else if (sc === 'fireworks') drawFireworks(); else if (sc === 'bells') drawBells(); else if (sc === 'lanterns') drawLanterns(); else drawAurora();
+    if (sc === 'night') drawNight(); else if (sc === 'fireworks') drawFireworks(); else if (sc === 'bells') drawBells(); else if (sc === 'lanterns') drawLanterns();
+    else if (sc === 'rain') drawRain(); else if (sc === 'nave') drawNave(); else if (sc === 'sea') drawSea(); else if (sc === 'garden') drawGarden(); else drawAurora();
   } finally { ctx = main; rv = keepRv; dawn = keepDawn; }
   ctx.save(); ctx.globalAlpha = Math.min(1, alpha); ctx.drawImage(LY.cv, 0, 0, W, H); ctx.restore();
 }
 function drawAmb() {
   if (ghost) renderScene(ghost.scene, ghost.rv, ghostAlpha());   // the last song's scene, receding layer by layer
   renderScene(sceneOf(), rv, amb);
+}
+
+// ================================================================ four more scenes
+// Gymnopédie: rain on a Paris window at night. Dies Irae: a cathedral nave by candlelight.
+// Drunken Sailor: on deck at night, under a swinging lantern. Pachelbel: a baroque garden at dusk, three swans in canon.
+const RN = { roofs: null, roofTop: 0, wins: [], bokeh: [], beads: [], rain: [], runs: [], pulse: 0, tower: null };
+const NV = { candles: [], smoke: [], pulse: 0 };
+const SEA = { clouds: null, spray: [], glints: [], swing: 0, swingV: 0, bump: 0 };
+const GD = { palace: null, palaceTop: 0, wins: [], jets: new Float32Array(8), ripples: [], flies: [] };
+
+function buildScenes4(rand, s, hz) {
+  // ---- Paris rooftops: mansards, chimney pots, dormers, and the tower in the distance
+  {
+    const top = Math.max(0, G.y0 - 150 * s), h = Math.ceil(H - top);
+    const c = document.createElement('canvas'); c.width = W; c.height = h;
+    const q = c.getContext('2d'), base = hz - top;
+    RN.wins = [];
+    // the tower, far off, drawn first so the roofs stand in front of it
+    const tx = W * .74, tTop = Math.max(6, G.y0 * .12) - top, tH = base - tTop;
+    q.fillStyle = '#070a12';
+    q.beginPath(); q.moveTo(tx - tH * .19, base); q.quadraticCurveTo(tx - tH * .05, base - tH * .45, tx - 2, tTop + 8); q.lineTo(tx + 2, tTop + 8);
+    q.quadraticCurveTo(tx + tH * .05, base - tH * .45, tx + tH * .19, base); q.lineTo(tx + tH * .1, base); q.quadraticCurveTo(tx, base - tH * .2, tx - tH * .1, base); q.closePath(); q.fill();
+    q.fillRect(tx - tH * .09, base - tH * .3, tH * .18, 3); q.fillRect(tx - tH * .05, base - tH * .58, tH * .1, 2); q.fillRect(tx - 1, tTop, 2, 10);
+    RN.tower = { x: tx, y: tTop + top };
+    for (let layer = 0; layer < 2; layer++) {
+      const col = layer ? '#05070c' : '#0b0e18';
+      for (let x = -10; x < W;) {
+        const w = (40 + rand() * 70) * s * (layer ? 1 : .7), bh = (layer ? 26 + rand() * 30 : 40 + rand() * 40) * s, rh = (10 + rand() * 12) * s;
+        const y0 = base - bh;
+        q.fillStyle = col;
+        q.fillRect(x, y0, w, bh + 2);
+        q.beginPath(); q.moveTo(x - 2 * s, y0); q.lineTo(x + 6 * s, y0 - rh); q.lineTo(x + w - 6 * s, y0 - rh); q.lineTo(x + w + 2 * s, y0); q.closePath(); q.fill();
+        // chimney stack with a row of pots
+        if (rand() < .8) {
+          const cx = x + w * (.2 + rand() * .6), ch = (8 + rand() * 8) * s, cw = (8 + rand() * 10) * s;
+          q.fillRect(cx, y0 - rh - ch, cw, ch + rh);
+          for (let p = 0; p < Math.max(1, Math.floor(cw / (3.2 * s))); p++) q.fillRect(cx + 1 + p * 3.2 * s, y0 - rh - ch - 3 * s, 2 * s, 3 * s);
+        }
+        // dormers in the slope, and windows in the façade
+        for (let dx = x + 8 * s; dx < x + w - 12 * s; dx += 14 * s) {
+          if (rand() < .55) { q.fillRect(dx, y0 - rh * .8, 6 * s, rh * .8); q.beginPath(); q.moveTo(dx - 1, y0 - rh * .8); q.lineTo(dx + 3 * s, y0 - rh - 2 * s); q.lineTo(dx + 6 * s + 1, y0 - rh * .8); q.fill(); RN.wins.push({ x: dx + 1.5 * s, y: y0 - rh * .6 + top, w: 3 * s, h: 4 * s, on: rand() < .35, ph: rand() * 6, warm: rand() }); }
+          if (layer) for (let wy = y0 + 6 * s; wy < base - 8 * s; wy += 11 * s) if (rand() < .3) RN.wins.push({ x: dx, y: wy + top, w: 4 * s, h: 6 * s, on: rand() < .4, ph: rand() * 6, warm: rand() });
+        }
+        x += w + rand() * 6 * s;
+      }
+    }
+    RN.roofs = c; RN.roofTop = top;
+    RN.bokeh = []; for (let i = 0; i < 46; i++) RN.bokeh.push({ x: rand() * W, y: G.y1 + rand() * (H - G.y1) * .9 - (rand() < .4 ? (G.y1 - 20) * rand() : 0), r: (6 + rand() * 18) * s, hue: rand() < .7 ? 30 + rand() * 20 : 190 + rand() * 30, ph: rand() * 6 });
+    RN.beads = []; for (let i = 0; i < 320; i++) RN.beads.push({ x: rand() * W, y: rand() * H, r: (.6 + rand() * rand() * 2.4) * s });
+    RN.rain = []; for (let i = 0; i < 160; i++) RN.rain.push({ x: rand() * W, y: rand() * H, l: (8 + rand() * 18) * s, v: (300 + rand() * 260) * s });
+  }
+  // ---- baroque palace façade for the garden at dusk
+  {
+    const ph = Math.max(40 * s, Math.min(G.y0 * .62, 150 * s)), c = document.createElement('canvas');
+    c.width = W; c.height = Math.ceil(ph + 60 * s);
+    const q = c.getContext('2d'), base = c.height, cx = W * .6, fw = Math.min(W * .7, 760 * s);
+    GD.wins = [];
+    q.fillStyle = '#2d2338';
+    const bodyH = ph * .45;
+    q.fillRect(cx - fw / 2, base - bodyH, fw, bodyH);
+    q.fillRect(cx - fw * .12, base - bodyH - ph * .12, fw * .24, ph * .12 + 2);
+    q.beginPath(); q.moveTo(cx - fw * .14, base - bodyH - ph * .12); q.lineTo(cx, base - bodyH - ph * .26); q.lineTo(cx + fw * .14, base - bodyH - ph * .12); q.fill();
+    // the dome and its lantern
+    const dR = fw * .07, dY = base - bodyH - ph * .26;
+    q.beginPath(); q.arc(cx, dY, dR, Math.PI, 0); q.fill(); q.fillRect(cx - dR, dY - 1, dR * 2, dR * .5);
+    q.fillRect(cx - dR * .18, dY - dR - dR * .55, dR * .36, dR * .6); q.beginPath(); q.arc(cx, dY - dR - dR * .55, dR * .18, Math.PI, 0); q.fill();
+    // balustrade along the roofline with urns
+    for (let x = cx - fw / 2; x < cx + fw / 2; x += 12 * s) { q.fillRect(x, base - bodyH - 5 * s, 2 * s, 5 * s); }
+    for (let x = cx - fw / 2; x <= cx + fw / 2 + 1; x += fw / 8) { q.fillRect(x - 3 * s, base - bodyH - 10 * s, 6 * s, 8 * s); }
+    for (let x = cx - fw / 2 + 10 * s; x < cx + fw / 2 - 8 * s; x += 18 * s) for (const fy of [.25, .62]) GD.wins.push({ x, y: base - bodyH * (1 - fy), w: 6 * s, h: bodyH * .26, k: rand() });
+    // cypresses either side
+    for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const x = cx + side * (fw / 2 + (14 + i * 22) * s), th = (40 + rand() * 30) * s;
+      q.fillStyle = '#1e2a24'; q.beginPath(); q.ellipse(x, base - th / 2, 6 * s, th / 2, 0, 0, TAU); q.fill();
+    }
+    GD.palace = c; GD.palaceTop = Math.max(4, G.y0 - 8 * s) - base;
+    GD.flies = []; for (let i = 0; i < 40; i++) GD.flies.push({ x: rand() * W, y: G.y1 + rand() * (H - G.y1), ph: rand() * 6, sp: .3 + rand() * .6 });
+  }
+  // ---- fast clouds over the moon for the night at sea
+  {
+    const ch = Math.max(30, Math.ceil(G.y0)), c = document.createElement('canvas'); c.width = W; c.height = ch;
+    const q = c.getContext('2d'); q.filter = 'blur(3px)';
+    for (let i = 0; i < 26; i++) {
+      const x = rand() * W, y = rand() * ch * .7, w = (60 + rand() * 140) * s;
+      for (const dx of [0, -W, W]) { q.fillStyle = `rgba(${40 + rand() * 30 | 0},${52 + rand() * 30 | 0},${70 + rand() * 30 | 0},.55)`; q.beginPath(); q.ellipse(x + dx, y, w, w * .16, 0, 0, TAU); q.fill(); }
+    }
+    SEA.clouds = c;
+  }
+  NV.candles = [];
+  for (let tier = 0; tier < 3; tier++) for (let i = 0; i < 9 - tier; i++) NV.candles.push({ tier, i, n: 9 - tier, lit: 0, life: 0, ph: rand() * 6, h: (.7 + rand() * .5) });
+}
+
+function clearScenes4(sc) {
+  if (sc === 'rain') { RN.runs = []; RN.pulse = 0; }
+  else if (sc === 'nave') { NV.candles.forEach(c => { c.lit = 0; c.life = 0; }); NV.smoke = []; }
+  else if (sc === 'sea') { SEA.spray = []; SEA.glints = []; }
+  else if (sc === 'garden') { GD.ripples = []; GD.jets.fill(0); }
+}
+
+function updateScenes4(dt, s) {
+  RN.pulse *= Math.exp(-dt * 2);
+  for (const d of RN.runs) {
+    // a drop on glass sticks, then slips: it moves in short runs and leaves a wet trail
+    d.hold -= dt;
+    if (d.hold <= 0) { d.vy = rnd(40, 140) * s; d.hold = rnd(.15, .6); } else d.vy *= Math.exp(-dt * 6);
+    d.y += d.vy * dt; d.x += Math.sin(d.y * .05 + d.ph) * .15;
+    d.trail.push({ x: d.x, y: d.y }); if (d.trail.length > 90) d.trail.shift();
+    d.age += dt;
+  }
+  RN.runs = RN.runs.filter(d => d.y < H + 20 && d.age < 14);
+  for (const r of RN.rain) { r.y += r.v * dt; r.x += r.v * .18 * dt; if (r.y > H) { r.y = -r.l; r.x = Math.random() * W; } }
+
+  NV.pulse *= Math.exp(-dt * 1.2);
+  for (const c of NV.candles) if (c.lit) { c.life -= dt / 45; if (c.life <= 0) { c.lit = 0; } }
+  if ((sceneOf() === 'nave' || (ghost && ghost.scene === 'nave')) && Math.random() < dt * 3) NV.smoke.push({ x: W * .82 + rnd(-30, 30) * s, y: H - 10, r: 10 * s, vx: rnd(-6, 6) * s, life: 1 });
+  for (const m of NV.smoke) { m.y -= 14 * s * dt; m.x += m.vx * dt + Math.sin(m.y * .02) * .3; m.r += 5 * s * dt; m.life -= dt * .08; }
+  NV.smoke = NV.smoke.filter(m => m.life > 0);
+
+  SEA.swingV += (-SEA.swing * 7 - SEA.swingV * .35) * dt + Math.sin(pT * Math.PI / 8) * .4 * dt;
+  SEA.swing = clamp(SEA.swing + SEA.swingV * dt, -.6, .6);
+  SEA.bump *= Math.exp(-dt * 2);
+  const g = 260 * s;
+  for (const p of SEA.spray) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += g * dt; p.life -= dt * .9; }
+  SEA.spray = SEA.spray.filter(p => p.life > 0);
+  for (const gl of SEA.glints) gl.life -= dt * 1.4;
+  SEA.glints = SEA.glints.filter(gl => gl.life > 0);
+
+  for (let i = 0; i < 8; i++) GD.jets[i] *= Math.exp(-dt * 1.3);
+  for (const r of GD.ripples) r.t += dt;
+  GD.ripples = GD.ripples.filter(r => r.t < 2.5);
+}
+
+function ambNote4(sc, r, v, s) {
+  if (sc === 'rain') {
+    if (v === 1 || (v == null && r >= 7)) {
+      if (RN.runs.length < 40) RN.runs.push({ x: rnd(W * .03, W * .97), y: rnd(-10, H * .35), vy: 0, hold: 0, ph: rnd(0, 6), r: rnd(2.2, 3.6) * s, trail: [], age: 0 });
+    } else { RN.pulse = Math.min(1, RN.pulse + .5); const w = RN.wins[Math.floor(Math.random() * RN.wins.length)]; if (w && Math.random() < .3) w.on = !w.on; }
+  } else if (sc === 'nave') {
+    if (v === 0) NV.pulse = Math.min(1, NV.pulse + .6);
+    else {
+      const dark = NV.candles.filter(c => !c.lit);
+      const c = dark.length ? dark[Math.floor(Math.random() * dark.length)] : NV.candles.reduce((a, b) => (a.life < b.life ? a : b));
+      c.lit = 1; c.life = 1;
+    }
+  } else if (sc === 'sea') {
+    const hzS = seaHorizon();
+    if (v === 2) { // the off-beat chords throw spray over the rail
+      const bx = rnd(W * .35, W * .95), by = horizonY() - 4 * s;
+      for (let i = 0; i < 14; i++) SEA.spray.push({ x: bx + rnd(-20, 20) * s, y: by, vx: rnd(-60, 60) * s, vy: -rnd(90, 190) * s, life: rnd(.6, 1), r: rnd(1, 2.4) * s });
+    } else if (v === 0) { SEA.bump = Math.min(1, SEA.bump + .5); SEA.swingV += (Math.random() < .5 ? -1 : 1) * .6; }
+    else for (let i = 0; i < 3; i++) SEA.glints.push({ x: rnd(0, W), y: hzS + rnd(4, 40) * s, life: 1, w: rnd(6, 16) * s });
+  } else if (sc === 'garden') {
+    if (v === 0) GD.jets[Math.floor(mod(pT + .01, 16) / 2) % 8] = 1;   // the ground bass: eight notes, eight jets
+    else { const sw = swanPos(v - 1); if (sw) GD.ripples.push({ x: sw.x, y: sw.y, t: 0 }); }
+  }
+}
+
+// ---- drawing ----
+function drawRain() {
+  const s = G.rh / 26, hz = horizonY();
+  ctx.globalAlpha = stage(0, .3);
+  skyFill('#141d33', '#2c3753', '#64505a', hz + 40 * s);
+  ctx.globalAlpha = 1;
+  // low cloud lit orange from the city underneath
+  ctx.globalAlpha = stage(.1, .45);
+  const cg = ctx.createLinearGradient(0, G.y0 * .3, 0, hz);
+  cg.addColorStop(0, 'rgba(255,160,90,0)'); cg.addColorStop(1, 'rgba(255,150,90,.18)');
+  ctx.fillStyle = cg; ctx.fillRect(0, 0, W, hz);
+  // the tower's searchlight sweeping slowly over the city
+  const bA = stage(.55, 1);
+  if (bA > .01 && RN.tower) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = bA;
+    const a = now * .45, L2 = W * .8;
+    for (const k of [0, Math.PI]) {
+      const ang = a + k, sp = .035;
+      const bg = ctx.createLinearGradient(RN.tower.x, RN.tower.y, RN.tower.x + Math.cos(ang) * L2, RN.tower.y + Math.sin(ang) * L2 * .08);
+      bg.addColorStop(0, 'rgba(255,236,190,.22)'); bg.addColorStop(1, 'rgba(255,236,190,0)');
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(RN.tower.x, RN.tower.y);
+      ctx.lineTo(RN.tower.x + Math.cos(ang - sp) * L2, RN.tower.y + Math.sin(ang - sp) * L2 * .08);
+      ctx.lineTo(RN.tower.x + Math.cos(ang + sp) * L2, RN.tower.y + Math.sin(ang + sp) * L2 * .08); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = stage(.15, .5);
+  ctx.drawImage(RN.roofs, 0, RN.roofTop);
+  for (const w of RN.wins) if (w.on) {
+    ctx.fillStyle = w.warm < .75 ? `rgba(255,200,120,${.75 + .2 * Math.sin(now * .7 + w.ph)})` : 'rgba(170,200,255,.7)';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+  }
+  // the street below, wet
+  const sg = ctx.createLinearGradient(0, hz, 0, H);
+  sg.addColorStop(0, '#0e1220'); sg.addColorStop(1, '#05070d');
+  ctx.fillStyle = sg; ctx.fillRect(0, hz, W, H - hz);
+  ctx.globalAlpha = 1;
+  // rain falling beyond the glass
+  ctx.globalAlpha = stage(.2, .6); ctx.strokeStyle = 'rgba(190,205,230,.16)'; ctx.lineWidth = 1;
+  ctx.beginPath(); for (const r of RN.rain) { ctx.moveTo(r.x, r.y); ctx.lineTo(r.x + r.l * .18, r.y + r.l); } ctx.stroke();
+  // out-of-focus lights seen through the wet window
+  ctx.globalAlpha = stage(.3, .7);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const b of RN.bokeh) {
+    const a = (.16 + .08 * Math.sin(now * .6 + b.ph)) * (1 + RN.pulse * .8), R = b.r;
+    const g = ctx.createRadialGradient(b.x, b.y, R * .55, b.x, b.y, R);
+    g.addColorStop(0, `hsla(${b.hue},80%,62%,${a})`); g.addColorStop(.85, `hsla(${b.hue},80%,68%,${a * 1.4})`); g.addColorStop(1, `hsla(${b.hue},80%,60%,0)`);
+    ctx.fillStyle = g; ctx.fillRect(b.x - R, b.y - R, R * 2, R * 2);
+  }
+  ctx.restore();
+  // drops resting on the glass, each with a highlight and a dark rim
+  ctx.globalAlpha = stage(.35, .8);
+  for (const b of RN.beads) {
+    ctx.fillStyle = 'rgba(10,14,24,.35)'; ctx.beginPath(); ctx.arc(b.x, b.y + b.r * .25, b.r, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(200,215,240,.28)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * .85, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(b.x - b.r * .35, b.y - b.r * .45, Math.max(.6, b.r * .35), Math.max(.6, b.r * .3));
+  }
+  // drops released by the melody, running down and leaving a clear trail
+  ctx.globalAlpha = 1;
+  for (const d of RN.runs) {
+    const fade = Math.min(1, (14 - d.age) / 4);
+    if (d.trail.length > 1) {
+      ctx.strokeStyle = `rgba(190,210,240,${.22 * fade})`; ctx.lineWidth = d.r * .9; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(d.trail[0].x, d.trail[0].y); for (const p of d.trail) ctx.lineTo(p.x, p.y); ctx.stroke();
+    }
+    ctx.fillStyle = `rgba(14,18,30,${.45 * fade})`; ctx.beginPath(); ctx.ellipse(d.x, d.y + d.r * .3, d.r, d.r * 1.25, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(215,228,250,${.5 * fade})`; ctx.beginPath(); ctx.ellipse(d.x, d.y, d.r * .85, d.r * 1.1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${.8 * fade})`; ctx.fillRect(d.x - d.r * .3, d.y - d.r * .5, d.r * .35, d.r * .3);
+  }
+  ctx.lineCap = 'butt';
+  // condensation creeping in from the frame
+  ctx.globalAlpha = stage(.4, .9);
+  const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .75);
+  v.addColorStop(0, 'rgba(180,195,215,0)'); v.addColorStop(1, 'rgba(180,195,215,.16)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1;
+}
+
+function naveVP() { return { x: W * .62, y: Math.max(30, G.y0 * .45) }; }
+function drawNave() {
+  const s = G.rh / 26, vp = naveVP(), hw = W * .62;
+  ctx.globalAlpha = stage(0, .3); ctx.fillStyle = '#07080e'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+  // the rose window at the far end of the nave, deep red and blue, brightening on the drone
+  const rA = stage(.45, .9);
+  if (rA > .01) {
+    const R = Math.min(G.y0 * .32, 46 * s) + 6, x = vp.x, y = vp.y;
+    ctx.save(); ctx.globalAlpha = rA;
+    ctx.globalCompositeOperation = 'lighter';
+    const halo = ctx.createRadialGradient(x, y, R * .5, x, y, R * 4);
+    halo.addColorStop(0, `rgba(140,60,90,${.25 + NV.pulse * .25})`); halo.addColorStop(1, 'rgba(60,40,90,0)');
+    ctx.fillStyle = halo; ctx.fillRect(x - R * 4, y - R * 4, R * 8, R * 8);
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 12; i++) {
+      const a0 = i / 12 * TAU, a1 = (i + 1) / 12 * TAU;
+      ctx.fillStyle = i % 2 ? `rgba(150,30,50,${.75 + NV.pulse * .25})` : `rgba(40,60,170,${.75 + NV.pulse * .25})`;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, R, a0, a1); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = `rgba(230,180,80,${.8})`; ctx.beginPath(); ctx.arc(x, y, R * .26, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#0b0b12'; ctx.lineWidth = Math.max(1.5, R * .07);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * R * .26, y + Math.sin(a) * R * .26); ctx.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(x, y, R * .62, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.stroke();
+    ctx.restore();
+  }
+  // bays of the nave receding to the window: piers, pointed arches, clerestory lancets
+  const stone = '#1b1a24', lit = '#2a2633';
+  ctx.globalAlpha = stage(.15, .55);
+  for (let k = 7; k >= 0; k--) {
+    const f = 1 / (1 + k * .55), f2 = 1 / (1 + (k + 1) * .55);
+    const xl = vp.x - hw * f, xr = vp.x + hw * f, floorY = vp.y + (H * 1.15 - vp.y) * f, topY = vp.y - (vp.y + 260 * s) * f, pw = 26 * s * f;
+    const xl2 = vp.x - hw * f2, xr2 = vp.x + hw * f2, topY2 = vp.y - (vp.y + 260 * s) * f2;
+    // clerestory lancet between this bay and the next, lit by the moon
+    for (const [a, b] of [[xl, xl2], [xr2, xr]]) {
+      const lx = (a + b) / 2, lw = Math.abs(b - a) * .22, ly = (topY + topY2) / 2 + 20 * s * f;
+      ctx.fillStyle = 'rgba(110,135,190,.35)';
+      ctx.beginPath(); ctx.moveTo(lx - lw / 2, ly + 60 * s * f); ctx.lineTo(lx - lw / 2, ly); ctx.quadraticCurveTo(lx, ly - lw * 1.6, lx + lw / 2, ly); ctx.lineTo(lx + lw / 2, ly + 60 * s * f); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = k % 2 ? stone : lit;
+    ctx.fillRect(xl - pw / 2, topY, pw, floorY - topY); ctx.fillRect(xr - pw / 2, topY, pw, floorY - topY);
+    ctx.strokeStyle = '#25222e'; ctx.lineWidth = Math.max(1, 5 * s * f);
+    ctx.beginPath(); ctx.moveTo(xl, topY); ctx.quadraticCurveTo(xl + (xr - xl) * .1, topY - (xr - xl) * .55, vp.x, topY - (xr - xl) * .5);
+    ctx.quadraticCurveTo(xr - (xr - xl) * .1, topY - (xr - xl) * .55, xr, topY); ctx.stroke();
+  }
+  // stone floor running away under the arches
+  const fg = ctx.createLinearGradient(0, vp.y, 0, H);
+  fg.addColorStop(0, 'rgba(20,18,26,0)'); fg.addColorStop(1, 'rgba(36,30,36,.9)');
+  ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(vp.x - hw * .12, vp.y + (H - vp.y) * .1); ctx.lineTo(-W * .2, H); ctx.lineTo(W * 1.2, H); ctx.lineTo(vp.x + hw * .12, vp.y + (H - vp.y) * .1); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+  // moonlight falling through the high windows, with incense drifting in it
+  const sA = stage(.55, 1);
+  if (sA > .01) {
+    ctx.save(); ctx.globalAlpha = sA; ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 4; i++) {
+      const x0 = vp.x + (i - 1.5) * W * .18, y0 = 0, w0 = 30 * s;
+      const g = ctx.createLinearGradient(x0, y0, x0 - W * .12, H);
+      g.addColorStop(0, `rgba(140,165,220,${.07 + .03 * Math.sin(now * .3 + i)})`); g.addColorStop(1, 'rgba(140,165,220,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + w0, y0); ctx.lineTo(x0 - W * .12 + w0 * 3, H); ctx.lineTo(x0 - W * .12, H); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = stage(.4, .9);
+  for (const m of NV.smoke) {
+    const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r);
+    g.addColorStop(0, `rgba(170,165,185,${.06 * m.life})`); g.addColorStop(1, 'rgba(170,165,185,0)');
+    ctx.fillStyle = g; ctx.fillRect(m.x - m.r, m.y - m.r, m.r * 2, m.r * 2);
+  }
+  ctx.globalAlpha = 1;
+  // the votive stand: every chant note lights one candle, and each burns down slowly
+  const cA = stage(.2, .6), stX = W * .82, stY = horizonY() + (H - horizonY()) * .55, sw = 150 * s;
+  ctx.globalAlpha = cA;
+  const lc = NV.candles.filter(c => c.lit).length;
+  const pool = ctx.createRadialGradient(stX, stY, 0, stX, stY, 220 * s);
+  pool.addColorStop(0, `rgba(255,170,80,${.05 + lc * .012})`); pool.addColorStop(1, 'rgba(255,170,80,0)');
+  ctx.fillStyle = pool; ctx.fillRect(stX - 220 * s, stY - 220 * s, 440 * s, 440 * s);
+  ctx.strokeStyle = '#121016'; ctx.lineWidth = 2 * s;
+  for (let t = 0; t < 3; t++) { const y = stY - t * 14 * s; ctx.beginPath(); ctx.moveTo(stX - sw / 2 + t * 10 * s, y); ctx.lineTo(stX + sw / 2 - t * 10 * s, y); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(stX - sw / 2, stY); ctx.lineTo(stX - sw / 2 - 6 * s, stY + 30 * s); ctx.moveTo(stX + sw / 2, stY); ctx.lineTo(stX + sw / 2 + 6 * s, stY + 30 * s); ctx.stroke();
+  for (const c of NV.candles) {
+    const y = stY - c.tier * 14 * s, span = sw - c.tier * 20 * s - 16 * s, x = stX - span / 2 + (c.i + .5) * span / c.n;
+    const ch = 9 * s * c.h * (c.lit ? .4 + .6 * c.life : 1);
+    ctx.fillStyle = '#d9cdb2'; ctx.fillRect(x - 2 * s, y - ch, 4 * s, ch);
+    if (c.lit) {
+      const fl = .8 + .2 * Math.sin(now * 13 + c.ph) * Math.sin(now * 7.1 + c.ph * 2), fy = y - ch - 4 * s;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(x, fy, 0, x, fy, 16 * s * fl);
+      g.addColorStop(0, 'rgba(255,190,100,.45)'); g.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - 16 * s, fy - 16 * s, 32 * s, 32 * s);
+      ctx.restore();
+      ctx.fillStyle = `rgba(255,232,170,${.9 * fl})`;
+      ctx.beginPath(); ctx.ellipse(x, fy, 1.6 * s, 3.6 * s * fl, 0, 0, TAU); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function seaHorizon() { return Math.max(20, G.y0 * .72); }
+function drawSea() {
+  const s = G.rh / 26, hz = horizonY(), sh = seaHorizon();
+  ctx.save();
+  // the whole view rolls gently with the ship, two bars to a roll
+  const roll = Math.sin(pT * Math.PI / 8) * .022 * stage(.3, .8) + SEA.bump * .006;
+  ctx.translate(W / 2, H * .7); ctx.rotate(roll); ctx.translate(-W / 2, -H * .7);
+  ctx.globalAlpha = stage(0, .3); skyFill('#070b18', '#122036', '#24384e', sh + 2); ctx.globalAlpha = 1;
+  drawStars(.6 * stage(.1, .5));
+  // the moon behind racing cloud
+  const mA = stage(.3, .7), mx = W * .3, my = Math.max(20, sh * .35), mR = 16 * s;
+  ctx.globalAlpha = mA;
+  const mg = ctx.createRadialGradient(mx, my, mR * .8, mx, my, mR * 6);
+  mg.addColorStop(0, 'rgba(220,230,255,.35)'); mg.addColorStop(1, 'rgba(220,230,255,0)');
+  ctx.fillStyle = mg; ctx.fillRect(mx - mR * 6, my - mR * 6, mR * 12, mR * 12);
+  ctx.fillStyle = '#eef2fb'; ctx.beginPath(); ctx.arc(mx, my, mR, 0, TAU); ctx.fill();
+  if (SEA.clouds) { const off = (now * 22 * s) % W; ctx.globalAlpha = stage(.15, .5); ctx.drawImage(SEA.clouds, off, 0); ctx.drawImage(SEA.clouds, off - W, 0); }
+  // the sea: long swells, and a broken path of moonlight
+  ctx.globalAlpha = stage(.1, .45);
+  const sg = ctx.createLinearGradient(0, sh, 0, hz);
+  sg.addColorStop(0, '#16304a'); sg.addColorStop(1, '#06121e');
+  ctx.fillStyle = sg; ctx.fillRect(-40, sh, W + 80, H - sh);
+  ctx.strokeStyle = 'rgba(150,190,220,.12)'; ctx.lineWidth = 1;
+  for (let k = 1; k < 12; k++) {
+    const f = k / 12, y = sh + f * f * (G.y0 - sh + 40 * s);
+    ctx.beginPath();
+    for (let x = -40; x <= W + 40; x += 20) { const yy = y + Math.sin(x * .012 / (f + .2) + now * (1 + f) + k) * 2.5 * s * (1 + f * 2); x > -40 ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = stage(.4, .85);
+  for (let k = 0; k < 20; k++) {
+    const f = k / 20, y = sh + 2 + f * (G.y0 - sh), w = (4 + f * 30) * s * (.5 + .5 * Math.sin(now * 2.3 + k * 1.9));
+    ctx.fillStyle = `rgba(230,238,255,${.35 * (1 - f * .5)})`; ctx.fillRect(mx - w / 2 + Math.sin(now + k) * 5, y, w, 1.4 * s);
+  }
+  for (const gl of SEA.glints) { ctx.fillStyle = `rgba(230,240,255,${.6 * gl.life})`; ctx.fillRect(gl.x - gl.w / 2, gl.y, gl.w, 1.5 * s); }
+  ctx.globalAlpha = 1;
+  // mast, yard and rigging, with the sail catching the lantern light
+  const mastX = W * .8, rA = stage(.2, .55);
+  ctx.globalAlpha = rA;
+  ctx.strokeStyle = '#0a0c12'; ctx.lineWidth = 1.2;
+  for (const tx of [W * .45, W * .58, W * 1.02, W * 1.1]) { ctx.beginPath(); ctx.moveTo(mastX, -10); ctx.lineTo(tx, hz); ctx.stroke(); }
+  for (let i = 1; i < 9; i++) { const y = hz - (hz + 10) * i / 9; ctx.beginPath(); ctx.moveTo(mastX - (mastX - W * .58) * (1 - i / 9), y); ctx.lineTo(mastX + (W * 1.02 - mastX) * (1 - i / 9), y); ctx.stroke(); }
+  ctx.fillStyle = '#0c0e14'; ctx.fillRect(mastX - 7 * s, -10, 14 * s, hz + 20);
+  const yardY = Math.max(10, G.y0 * .25);
+  ctx.fillRect(mastX - 150 * s, yardY - 3 * s, 300 * s, 6 * s);
+  const sailG = ctx.createLinearGradient(0, yardY, 0, yardY + 120 * s);
+  sailG.addColorStop(0, 'rgba(70,64,58,.95)'); sailG.addColorStop(1, 'rgba(40,38,40,.95)');
+  ctx.fillStyle = sailG;
+  ctx.beginPath(); ctx.moveTo(mastX - 145 * s, yardY + 3 * s); ctx.lineTo(mastX + 145 * s, yardY + 3 * s);
+  const bil = 26 * s * (1 + .15 * Math.sin(now * .9));
+  ctx.quadraticCurveTo(mastX + 160 * s, yardY + 70 * s, mastX + 140 * s, yardY + 120 * s + bil);
+  ctx.quadraticCurveTo(mastX, yardY + 120 * s + bil * 1.6, mastX - 140 * s, yardY + 120 * s + bil);
+  ctx.quadraticCurveTo(mastX - 160 * s, yardY + 70 * s, mastX - 145 * s, yardY + 3 * s); ctx.fill();
+  // the storm lantern on its hook, swinging, warming the sail and the deck
+  const hookX = mastX - 9 * s, hookY = Math.max(yardY + 40 * s, G.y0 - 70 * s), Lc = 24 * s, ang = SEA.swing;
+  const lx = hookX + Math.sin(ang) * Lc, ly = hookY + Math.cos(ang) * Lc;
+  ctx.strokeStyle = '#151515'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(hookX, hookY); ctx.lineTo(lx, ly); ctx.stroke();
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const lg = ctx.createRadialGradient(lx, ly + 8 * s, 0, lx, ly + 8 * s, 150 * s);
+  lg.addColorStop(0, 'rgba(255,180,90,.32)'); lg.addColorStop(1, 'rgba(255,150,60,0)');
+  ctx.fillStyle = lg; ctx.fillRect(lx - 150 * s, ly - 142 * s, 300 * s, 300 * s);
+  ctx.restore();
+  ctx.save(); ctx.translate(lx, ly); ctx.rotate(-ang * .5);
+  ctx.fillStyle = '#1a1612'; ctx.fillRect(-6 * s, 0, 12 * s, 3 * s); ctx.fillRect(-6 * s, 16 * s, 12 * s, 3 * s);
+  ctx.fillStyle = 'rgba(255,214,140,.95)'; ctx.fillRect(-5 * s, 3 * s, 10 * s, 13 * s);
+  ctx.strokeStyle = '#1a1612'; ctx.lineWidth = 1; ctx.strokeRect(-5 * s, 3 * s, 10 * s, 13 * s); ctx.beginPath(); ctx.moveTo(0, 3 * s); ctx.lineTo(0, 16 * s); ctx.stroke();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  // the deck: rail, planks running toward the bow, a coil of rope
+  ctx.globalAlpha = stage(.25, .6);
+  const dg = ctx.createLinearGradient(0, hz, 0, H);
+  dg.addColorStop(0, '#2a1e16'); dg.addColorStop(1, '#120c08');
+  ctx.fillStyle = dg; ctx.fillRect(-40, hz, W + 80, H - hz + 40);
+  ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1;
+  for (let i = -12; i <= 12; i++) { ctx.beginPath(); ctx.moveTo(W * .55 + i * 8 * s, hz); ctx.lineTo(W * .55 + i * 90 * s, H + 40); ctx.stroke(); }
+  ctx.fillStyle = '#1b130d'; ctx.fillRect(-40, hz - 16 * s, W + 80, 5 * s);
+  for (let x = -20; x < W + 20; x += 22 * s) ctx.fillRect(x, hz - 12 * s, 4 * s, 12 * s);
+  const warm = ctx.createRadialGradient(lx, hz + 30 * s, 0, lx, hz + 30 * s, 260 * s);
+  warm.addColorStop(0, 'rgba(255,170,90,.18)'); warm.addColorStop(1, 'rgba(255,170,90,0)');
+  ctx.fillStyle = warm; ctx.fillRect(lx - 260 * s, hz - 230 * s, 520 * s, 520 * s);
+  const cx = W * .66, cy = hz + (H - hz) * .55;
+  ctx.strokeStyle = '#3b2c1f'; ctx.lineWidth = 2 * s;
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(cx, cy, (22 - i * 4) * s, (8 - i * 1.4) * s, 0, 0, TAU); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // spray thrown over the rail
+  ctx.fillStyle = 'rgba(220,235,245,.8)';
+  for (const p of SEA.spray) { ctx.globalAlpha = p.life * .8; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// the three swans follow the same course across the pool, each two bars behind the last, as the violins do
+function swanPos(i) {
+  if (i < 0 || i > 2) return null;
+  const hz = horizonY(), y0 = G.y1 + (hz - G.y1) * .55, s = G.rh / 26;
+  const u = mod((pT - 16 * i) / 64, 1);
+  return { x: W * (.12 + .82 * u), y: y0 + Math.sin(u * TAU * 1.5) * 10 * s + (hz - y0) * .45 * Math.sin(u * Math.PI), u };
+}
+function drawGarden() {
+  const s = G.rh / 26, hz = horizonY(), d = rv;
+  const g = ctx.createLinearGradient(0, 0, 0, G.y0 + 40 * s);
+  g.addColorStop(0, mixC('#3d4f86', '#2a2a5a', d)); g.addColorStop(.55, mixC('#d79a8a', '#9c6b8e', d)); g.addColorStop(1, mixC('#ffd29a', '#f2a77e', d));
+  ctx.globalAlpha = stage(0, .3); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+  drawStars(.5 * stage(.7, 1));
+  // the palace across the garden, its windows lit as dusk deepens
+  ctx.globalAlpha = stage(.15, .5);
+  if (GD.palace) {
+    ctx.drawImage(GD.palace, 0, GD.palaceTop);
+    for (const w of GD.wins) {
+      const on = clamp((d - .3 - w.k * .5) * 4, 0, 1);
+      ctx.fillStyle = on > 0 ? `rgba(255,205,130,${.85 * on})` : 'rgba(0,0,0,.2)';
+      ctx.fillRect(w.x, GD.palaceTop + w.y, w.w, w.h);
+    }
+  }
+  ctx.globalAlpha = 1;
+  // the long pool, holding the colour of the sky
+  ctx.globalAlpha = stage(.1, .45);
+  const poolTop = G.y1 + 4 * s;
+  const pg = ctx.createLinearGradient(0, poolTop, 0, hz + 20 * s);
+  pg.addColorStop(0, mixC('#f2c79a', '#b98096', d)); pg.addColorStop(1, mixC('#7d86b0', '#3e3d6e', d));
+  ctx.fillStyle = pg; ctx.fillRect(0, poolTop, W, hz + 20 * s - poolTop);
+  ctx.strokeStyle = 'rgba(255,240,220,.18)'; ctx.lineWidth = 1;
+  for (let k = 1; k < 7; k++) { const y = poolTop + (hz + 20 * s - poolTop) * k / 7; ctx.beginPath(); ctx.moveTo(0, y + Math.sin(now * .7 + k) * 1.5); ctx.lineTo(W, y + Math.sin(now * .7 + k + 1) * 1.5); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // eight fountain jets across the pool, one for each note of the repeating bass
+  ctx.globalAlpha = stage(.3, .7);
+  for (let i = 0; i < 8; i++) {
+    const x = W * (.2 + i * .085), base = hz - 2 * s, jh = (14 + 46 * GD.jets[i]) * s;
+    const jg = ctx.createLinearGradient(0, base - jh, 0, base);
+    jg.addColorStop(0, 'rgba(255,250,240,0)'); jg.addColorStop(1, 'rgba(255,250,240,.6)');
+    ctx.fillStyle = jg; ctx.beginPath(); ctx.moveTo(x - 1.5 * s, base); ctx.quadraticCurveTo(x, base - jh * 1.1, x + 1.5 * s, base); ctx.fill();
+    ctx.fillStyle = 'rgba(255,250,240,.35)'; ctx.beginPath(); ctx.ellipse(x, base, 6 * s, 1.6 * s, 0, 0, TAU); ctx.fill();
+  }
+  // the swans and their ripples
+  for (const r of GD.ripples) { const a = 1 - r.t / 2.5; ctx.strokeStyle = `rgba(255,248,235,${.4 * a})`; ctx.beginPath(); ctx.ellipse(r.x, r.y + 4 * s, (6 + r.t * 26) * s, (2 + r.t * 7) * s, 0, 0, TAU); ctx.stroke(); }
+  for (let i = 0; i < 3; i++) {
+    const p = swanPos(i), z = 9 * s;
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + z * .7, z * 1.4, z * .3, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fbf6ee';
+    ctx.beginPath(); ctx.moveTo(p.x - z * 1.2, p.y); ctx.quadraticCurveTo(p.x - z * .2, p.y - z * 1.1, p.x + z * .9, p.y - z * .2); ctx.quadraticCurveTo(p.x + z * .4, p.y + z * .45, p.x - z * 1.2, p.y); ctx.fill();
+    ctx.strokeStyle = '#fbf6ee'; ctx.lineWidth = 2 * s; ctx.beginPath(); ctx.moveTo(p.x + z * .6, p.y - z * .2); ctx.quadraticCurveTo(p.x + z * 1.15, p.y - z * 1.4, p.x + z * .75, p.y - z * 1.9); ctx.stroke();
+    ctx.fillStyle = '#e07a2a'; ctx.beginPath(); ctx.moveTo(p.x + z * .75, p.y - z * 1.95); ctx.lineTo(p.x + z * 1.15, p.y - z * 1.8); ctx.lineTo(p.x + z * .72, p.y - z * 1.75); ctx.fill();
+  }
+  // a stone balustrade in front, with urns
+  ctx.fillStyle = mixC('#c9b79c', '#5a4c5a', d);
+  const by = hz + (H - hz) * .3;
+  ctx.fillRect(0, by, W, 5 * s); ctx.fillRect(0, by + 22 * s, W, 6 * s);
+  for (let x = 6 * s; x < W; x += 16 * s) { ctx.beginPath(); ctx.ellipse(x, by + 13 * s, 3.5 * s, 8 * s, 0, 0, TAU); ctx.fill(); }
+  for (let x = W * .1; x < W; x += W * .2) { ctx.fillRect(x - 6 * s, by - 3 * s, 12 * s, 3 * s); ctx.beginPath(); ctx.ellipse(x, by - 10 * s, 7 * s, 8 * s, 0, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = mixC('#6d6650', '#2a2632', d); ctx.fillRect(0, by + 28 * s, W, H);
+  ctx.globalAlpha = 1;
+  // fireflies come out as it gets dark
+  const fA = stage(.75, 1);
+  if (fA > .01) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const f of GD.flies) {
+      const x = f.x + Math.sin(now * f.sp + f.ph) * 30 * s, y = f.y + Math.cos(now * f.sp * .7 + f.ph) * 14 * s, a = fA * Math.max(0, Math.sin(now * 1.3 + f.ph * 3));
+      const fg = ctx.createRadialGradient(x, y, 0, x, y, 6 * s); fg.addColorStop(0, `rgba(230,255,150,${.7 * a})`); fg.addColorStop(1, 'rgba(230,255,150,0)');
+      ctx.fillStyle = fg; ctx.fillRect(x - 6 * s, y - 6 * s, 12 * s, 12 * s);
+    }
+    ctx.restore();
+  }
+}
+// ================================================================ how it plays: a live cutaway of the mechanism
+// A side view of one note's channel, drawn like a patent plate and driven by the real strip:
+// a hole arrives, a point of the star wheel drops into it, the moving paper turns the wheel, its far point
+// flicks the steel tooth, and the tooth rings into the soundboard. Below: the comb from above, and the live waveform.
+const mechEl = document.getElementById('mech'), mechCv = document.getElementById('mechCv'), mctx = mechCv.getContext('2d');
+const mechBtn = document.getElementById('mech-toggle');
+const MECH = { on: false, r: 9, t: null, pluckT: -10, lastR: -1, buf: null };
+let analyser = null;
+function setMech(on) {
+  MECH.on = on; mechEl.hidden = !on; mechBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  try { localStorage.setItem('paper-music-box-mech', on ? '1' : '0'); } catch (e) {}
+  placeMech();
+}
+mechBtn.addEventListener('click', () => setMech(!MECH.on));
+function placeMech() {
+  if (!MECH.on || !G.rh) return;
+  const narrow = W < 760;
+  const w = narrow ? W - 32 : Math.min(460, W * .38), h = Math.round(w * 340 / 460);
+  let top = narrow ? G.y1 + 10 : G.y0 + Math.max(0, (G.y1 - G.y0 - h) / 2);
+  if (top + h > H - 50) top = Math.max(G.hb + 8, H - 50 - h);
+  Object.assign(mechEl.style, { width: w + 'px', height: h + 'px', top: top + 'px', left: (narrow ? 16 : W - w - 20) + 'px' });
+  const d = Math.min(2, window.devicePixelRatio || 1);
+  mechCv.width = Math.round(w * d); mechCv.height = Math.round(h * d);
+  MECH.w = w; MECH.h = h; MECH.d = d;
+}
+// the next hole to reach the comb (the highest note, if several sound together)
+function mechNext() {
+  const p = pT;
+  for (let t = Math.floor(p * 2) + 1; t <= Math.floor(p * 2) + 16; t++) {
+    const base = mod(t, 2 * L) * 16;
+    for (let r = N - 1; r >= 0; r--) if (notes.has(base + r)) return { r, t };
+  }
+  return null;
+}
+function mechOnPluck(r) { if (r === MECH.r) MECH.pluckT = now; }
+
+function wrapText(c, text, x, y, maxW, lh) {
+  const words = text.split(' '); let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (c.measureText(test).width > maxW && line) { c.fillText(line, x, y); line = w; y += lh; } else line = test;
+  }
+  if (line) c.fillText(line, x, y);
+  return y + lh;
+}
+
+function drawMech() {
+  if (!MECH.on || !MECH.w) return;
+  // follow the next note: hold on the last one while it rings, then move on
+  if (MECH.t == null || (pT > MECH.t / 2 + .05 && now - MECH.pluckT > .45) || pT < MECH.t / 2 - 9) {
+    const nx = mechNext(); if (nx) { MECH.r = nx.r; MECH.t = nx.t; }
+  }
+  const c = mctx, w = MECH.w, h = MECH.h, k = w / 460, ink = '#2f435b', faint = 'rgba(47,67,91,.35)', red = '#a5402c';
+  c.setTransform(MECH.d, 0, 0, MECH.d, 0, 0);
+  c.clearRect(0, 0, w, h);
+  c.save(); c.scale(k, k);
+  const Wd = 460, Hd = 340;
+  c.fillStyle = '#efe5cf'; c.fillRect(0, 0, Wd, Hd);
+  c.strokeStyle = 'rgba(47,67,91,.5)'; c.lineWidth = 1; c.strokeRect(6.5, 6.5, Wd - 13, Hd - 13);
+  const f = FREQ[MECH.r], name = NAMES[MECH.r];
+  c.fillStyle = ink; c.font = `700 14px ${FONT}`; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+  c.fillText('How it plays', 18, 27);
+  c.textAlign = 'right'; c.font = `500 13px ${FONT}`;
+  c.fillText(`${name}  ·  ${Math.round(f)} Hz`, Wd - 18, 27);
+
+  // engagement: u is how far (in beats) the next hole still has to travel to the star wheel
+  const u = MECH.t != null ? MECH.t / 2 - pT : 9;
+  const eng = clamp((.3 - u) / .3, 0, 1);              // 0 → 1 as the paper rolls the wheel through a quarter turn
+  const ring = Math.exp(-(now - MECH.pluckT) * 3.2) * (now >= MECH.pluckT ? 1 : 0);
+  const stage1 = u > 0 && u < 2, stage2 = eng > 0 && eng < 1, stage3 = ring > .15, stage4 = ring > .05;
+
+  // ---- side view
+  const PX = 52, py = 92, wx = 172, wy = 110, R = 16;            // px per beat, paper line, star wheel centre
+  // soundboard and comb block
+  const sbY = 172;
+  c.fillStyle = '#b78a5c'; c.fillRect(22, sbY, 236, 12);
+  c.strokeStyle = 'rgba(80,50,25,.45)'; for (let x = 26; x < 256; x += 9) { c.beginPath(); c.moveTo(x, sbY + 2); c.quadraticCurveTo(x + 4, sbY + 6, x + 2, sbY + 10); c.stroke(); }
+  c.strokeStyle = ink; c.lineWidth = 1.2; c.strokeRect(22, sbY, 236, 12);
+  c.fillStyle = '#8d949b'; c.fillRect(40, 122, 32, sbY - 122); c.strokeRect(40, 122, 32, sbY - 122);
+  c.beginPath(); c.arc(56, 152, 3, 0, TAU); c.stroke(); c.beginPath(); c.moveTo(54, 152); c.lineTo(58, 152); c.stroke();
+  // the steel tooth: pressed down by the wheel, then ringing (motion exaggerated and slowed so the eye can follow it)
+  const x0 = 72, tipX = wx + 4, ty = wy + R + 3;
+  const press = stage2 ? Math.sin(eng * Math.PI * .5) * 7 : 0;
+  const visHz = 3 + 7 * (MECH.r / (N - 1));
+  const disp = press + ring * 7 * Math.sin((now - MECH.pluckT) * TAU * visHz);
+  const tg = c.createLinearGradient(0, ty - 3, 0, ty + 3);
+  tg.addColorStop(0, '#59616a'); tg.addColorStop(.5, '#e8eef2'); tg.addColorStop(1, '#5c6268');
+  c.fillStyle = tg; c.strokeStyle = ink; c.lineWidth = 1;
+  c.beginPath();
+  for (let i = 0; i <= 20; i++) { const q = i / 20, x = x0 + (tipX - x0) * q, y = ty - 2.5 + disp * q * q; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  for (let i = 20; i >= 0; i--) { const q = i / 20, x = x0 + (tipX - x0) * q, y = ty + 2.5 + disp * q * q; c.lineTo(x, y); }
+  c.closePath(); c.fill(); c.stroke();
+  if (ring > .05) {   // the blur of the vibrating tip
+    c.strokeStyle = `rgba(47,67,91,${.25 * ring})`; c.setLineDash([2, 2]);
+    c.beginPath(); c.moveTo(x0, ty - 2.5); c.quadraticCurveTo((x0 + tipX) / 2, ty - 2.5, tipX, ty - 2.5 - 7 * ring); c.stroke();
+    c.beginPath(); c.moveTo(x0, ty + 2.5); c.quadraticCurveTo((x0 + tipX) / 2, ty + 2.5, tipX, ty + 2.5 + 7 * ring); c.stroke();
+    c.setLineDash([]);
+  }
+  // the star wheel: four points, turned a quarter turn per hole
+  const ang = -eng * Math.PI / 2 + Math.PI / 4 * 0;
+  c.save(); c.translate(wx, wy); c.rotate(ang);
+  c.fillStyle = '#c99c47'; c.strokeStyle = ink; c.lineWidth = 1.1;
+  c.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 - Math.PI / 2;
+    c.lineTo(Math.cos(a - .5) * R * .45, Math.sin(a - .5) * R * .45);
+    c.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+    c.lineTo(Math.cos(a + .5) * R * .45, Math.sin(a + .5) * R * .45);
+  }
+  c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#efe5cf'; c.beginPath(); c.arc(0, 0, 2.6, 0, TAU); c.fill(); c.stroke();
+  c.restore();
+  // the paper strip, moving left, with this note's holes
+  c.fillStyle = '#fbf4e2'; c.fillRect(14, py, 252, 5);
+  c.strokeStyle = ink; c.lineWidth = 1; c.beginPath(); c.moveTo(14, py); c.lineTo(266, py); c.moveTo(14, py + 5); c.lineTo(266, py + 5); c.stroke();
+  for (let t = Math.floor((pT - 3) * 2); t <= Math.ceil((pT + 2) * 2); t++) {
+    if (!notes.has(mod(t, 2 * L) * 16 + MECH.r)) continue;
+    const hx = wx + (t / 2 - pT) * PX;
+    if (hx < 16 || hx > 262) continue;
+    c.fillStyle = '#efe5cf'; c.fillRect(hx - 5, py - .5, 10, 6);
+    c.strokeStyle = ink; c.beginPath(); c.moveTo(hx - 5, py); c.lineTo(hx - 5, py + 5); c.moveTo(hx + 5, py); c.lineTo(hx + 5, py + 5); c.stroke();
+  }
+  // the feed rollers that the crank drives
+  for (const ry of [py - 7, py + 12]) {
+    c.fillStyle = '#4a4a50'; c.beginPath(); c.arc(34, ry, 6.5, 0, TAU); c.fill(); c.stroke();
+    c.strokeStyle = '#d8dde2'; c.beginPath(); const ra = (ry < py ? -1 : 1) * pT * 2.2; c.moveTo(34, ry); c.lineTo(34 + Math.cos(ra) * 5, ry + Math.sin(ra) * 5); c.stroke(); c.strokeStyle = ink;
+  }
+  c.fillStyle = faint; c.font = `500 10.5px ${FONT}`; c.textAlign = 'left';
+  c.fillText('← paper moves this way', 52, py + 20);
+  // sound leaving the board
+  if (ring > .03) for (let i = 0; i < 3; i++) {
+    const ph = ((now - MECH.pluckT) * 1.4 + i / 3) % 1, rr = 10 + ph * 34;
+    c.strokeStyle = `rgba(47,67,91,${(1 - ph) * .5 * ring})`; c.beginPath(); c.arc(258, sbY + 6, rr, -Math.PI * .4, Math.PI * .4); c.stroke();
+  }
+  // numbered callouts, the active step in red
+  const callout = (n, x, y, lx, ly, on) => {
+    c.strokeStyle = on ? red : faint; c.lineWidth = 1; c.beginPath(); c.moveTo(lx, ly); c.lineTo(x, y); c.stroke();
+    c.fillStyle = '#efe5cf'; c.beginPath(); c.arc(lx, ly, 8, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = on ? red : ink; c.font = `700 10.5px ${FONT}`; c.textAlign = 'center'; c.fillText(String(n), lx, ly + 3.6);
+  };
+  callout(1, 120, py, 112, 62, stage1);
+  callout(2, wx + 10, wy - 10, 210, 66, stage2);
+  callout(3, 124, ty + 2, 112, 152, stage3);
+  callout(4, 150, sbY + 12, 150, 206, stage4);
+
+  // ---- the steps, in words
+  const lx0 = 282, lw = 166;
+  const steps = [
+    ['Paper strip', 'Each hole is a note. The crank pulls the paper past the star wheels.', stage1],
+    ['Star wheel', 'A point drops into a hole; the moving paper turns the wheel.', stage2],
+    ['Steel tooth', `Its far point flicks the tooth, which rings ${Math.round(f)} times a second.`, stage3],
+    ['Soundboard', 'The wood under the comb carries the ringing into the air.', stage4]
+  ];
+  let y = 54;
+  steps.forEach(([title, body, on], i) => {
+    c.textAlign = 'left'; c.fillStyle = on ? red : ink; c.font = `700 12px ${FONT}`;
+    c.fillText(`${i + 1}  ${title}`, lx0, y);
+    c.fillStyle = on ? ink : 'rgba(47,67,91,.7)'; c.font = `400 11px ${FONT}`;
+    y = wrapText(c, body, lx0 + 14, y + 14, lw - 14, 13) + 7;
+  });
+
+  // ---- the comb from above: one tooth per note, shorter teeth ring higher
+  const cy0 = 258, cx0 = 22;
+  c.strokeStyle = faint; c.beginPath(); c.moveTo(14, 246.5); c.lineTo(Wd - 14, 246.5); c.stroke();
+  c.fillStyle = '#8d949b'; c.fillRect(cx0, cy0 + 40, 15 * 9, 6);
+  for (let r = 0; r < N; r++) {
+    const len = 40 - r * 1.9, x = cx0 + 3 + r * 9, on = r === MECH.r;
+    c.fillStyle = on ? '#c99c47' : '#b5bcc2';
+    const jit = on ? ring * 1.2 * Math.sin(now * 60) : 0;
+    c.fillRect(x + jit, cy0 + 40 - len, 5, len);
+  }
+  c.fillStyle = ink; c.font = `400 10.5px ${FONT}`; c.textAlign = 'left';
+  c.fillText('C4  262 Hz', cx0, cy0 + 60); c.textAlign = 'right'; c.fillText('C6  1047 Hz', cx0 + 135, cy0 + 60);
+  c.textAlign = 'left'; c.fillStyle = 'rgba(47,67,91,.7)'; c.fillText('Shorter teeth ring higher.', 176, cy0 + 8);
+
+  // ---- the sound itself: the live waveform from the speakers
+  const sx = 176, sy = cy0 + 16, sw = Wd - 18 - sx, sh = 40;
+  c.strokeStyle = faint; c.strokeRect(sx + .5, sy + .5, sw, sh);
+  c.beginPath(); c.moveTo(sx, sy + sh / 2 + .5); c.lineTo(sx + sw, sy + sh / 2 + .5); c.stroke();
+  if (analyser) {
+    if (!MECH.buf || MECH.buf.length !== analyser.fftSize) MECH.buf = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(MECH.buf);
+    const b = MECH.buf; let start = 0;
+    for (let i = 1; i < b.length / 2; i++) if (b[i - 1] < 0 && b[i] >= 0) { start = i; break; }
+    let peak = .02; for (let i = 0; i < b.length; i++) peak = Math.max(peak, Math.abs(b[i]));
+    const n = Math.min(600, b.length - start), gain = Math.min(10, .9 / peak) * (sh / 2);
+    c.strokeStyle = ink; c.lineWidth = 1.1; c.beginPath();
+    for (let i = 0; i < n; i++) { const x = sx + i / (n - 1) * sw, yv = sy + sh / 2 - b[start + i] * gain; i ? c.lineTo(x, yv) : c.moveTo(x, yv); }
+    c.stroke();
+  }
+  c.fillStyle = 'rgba(47,67,91,.7)'; c.font = `400 10.5px ${FONT}`; c.textAlign = 'left';
+  c.fillText('The sound, as it leaves the speakers', sx, sy + sh + 13);
+  c.restore();
 }
 
 function draw() {
@@ -1672,6 +2443,7 @@ function draw() {
   if (!usedFan && motorV > .5) hint('Touch the fan to stop', G.fan.x + G.fan.r + G.rh * .5, G.fan.y, 'left', 3);
   drawMini();
   ctx.restore();
+  drawMech();
 }
 
 // ---------------------------------------------------------------- input
@@ -1794,8 +2566,8 @@ window.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'w') winding
 document.querySelectorAll('[data-song]').forEach(b => b.addEventListener('click', () => {
   ensureAudio(); pushUndo(); loadSong(b.dataset.song); tickSound(.12);
 }));
-document.getElementById('len-minus').addEventListener('click', () => setLength(L - 4));
-document.getElementById('len-plus').addEventListener('click', () => setLength(L + 4));
+document.getElementById('len-minus').addEventListener('click', () => setLength(L - meter));
+document.getElementById('len-plus').addEventListener('click', () => setLength(L + meter));
 document.getElementById('undo').addEventListener('click', undo);
 
 let resizeT = 0;
@@ -1805,6 +2577,8 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
 // ---------------------------------------------------------------- boot
 if (!restore()) loadSong('twinkle'); else refreshUi();
 layout();
+let mechPref = null; try { mechPref = localStorage.getItem('paper-music-box-mech'); } catch (e) {}
+setMech(mechPref == null ? W >= 900 : mechPref === '1');
 let last = performance.now();
 function frame(ms) {
   const dt = Math.min(.05, Math.max(0, (ms - last) / 1000)); last = ms; now = ms / 1000;

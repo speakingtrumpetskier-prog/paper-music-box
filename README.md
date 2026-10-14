@@ -13,6 +13,7 @@ Open `index.html` in a browser. It needs no build step and no server; the only o
 - Hold the brass key (or the W key) to wind the spring, then let go. The tune slows as the spring runs down.
 - Touch the fan (or press Space) to stop it.
 - Drag the paper or the bar along the bottom to move through the strip. Ctrl+Z undoes.
+- **How it plays** opens a live cutaway of the mechanism: a hole reaches a star wheel, a point of the wheel drops into it, the moving paper turns the wheel, its far point flicks a steel tooth, and the tooth rings into the soundboard. It follows the real strip, shows each note's frequency, and draws the live waveform.
 
 ## Songs and scenes
 
@@ -24,8 +25,20 @@ Each song has a scene that comes up slowly behind the box once the music has bee
 | Ode to Joy | A city on a river; each melody note bursts as a firework on the beat |
 | Frère Jacques (a three-voice round) | A village at dawn; three bells in the tower, one per voice |
 | Nearer, My God, to Thee | Paper lanterns rising off a night sea |
+| Gymnopédie No. 1 | Rain on a Paris window at night; the melody sends drops running down the glass |
+| Dies Irae | A cathedral nave; every chant note lights a candle |
+| Drunken Sailor | On deck at night under a swinging lantern; the chords throw spray over the rail |
+| Pachelbel's Canon | A baroque garden at dusk; three swans follow one course, as the three violins do, and eight fountain jets follow the bass |
 | Blank strip | Northern lights that follow the notes you punch |
 
-"Nearer, My God, to Thee" is Lowell Mason's tune Bethany (1856), transcribed from the [Hymnary.org score](https://hymnary.org/tune/bethany_mason) and moved to C. All songs are in the public domain.
+## Sources
 
-The comb has 15 notes, C4 to C6 on the white keys, like the common 15-note paper-strip kits. The sound is synthesized in the browser with the Web Audio API.
+All songs are in the public domain. Arrangements are moved onto the comb's white keys where needed.
+
+- **Nearer, My God, to Thee:** Lowell Mason's tune Bethany (1856), from the [Hymnary.org score](https://hymnary.org/tune/bethany_mason), moved from F to C.
+- **Gymnopédie No. 1:** Erik Satie (1888), from the [Mutopia Project edition](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=37), moved from D to C. The strip loops the first section; the middle section needs a note the comb does not have in that key.
+- **Dies Irae:** the 13th-century chant, first verse, from the score in [Wikipedia's article](https://en.wikipedia.org/wiki/Dies_irae). It is in D Dorian, on the white keys. The second time through, a second voice sings a fourth below, as in early organum.
+- **Drunken Sailor:** traditional shanty in D Dorian, from the score on [German Wikibooks](https://de.wikibooks.org/wiki/Liederbuch/_What_shall_we_do_with_the_drunken_sailor).
+- **Pachelbel's Canon:** from the [Mutopia Project edition](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=2047) of the original parts for three violins and bass, moved from D to C. The first eight bars of the violin line loop as a perpetual canon over the ground bass.
+
+The comb has 15 notes, C4 to C6 on the white keys, like the common 15-note paper-strip kits. The mechanism drawing follows the star-wheel design those kits use. The sound is synthesized in the browser with the Web Audio API.
