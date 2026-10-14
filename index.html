@@ -2167,12 +2167,12 @@ const mechEl = document.getElementById('mech'), mechCv = document.getElementById
 const mechBtn = document.getElementById('mech-toggle');
 const MECH = { on: false, r: 9, t: null, pluckT: -10, lastR: -1, buf: null };
 let analyser = null;
-function setMech(on) {
+function setMech(on, remember) {
   MECH.on = on; mechEl.hidden = !on; mechBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  try { localStorage.setItem('paper-music-box-mech', on ? '1' : '0'); } catch (e) {}
+  if (remember) try { localStorage.setItem('paper-music-box-mech-v2', on ? '1' : '0'); } catch (e) {}   // only a viewer's own choice is remembered
   placeMech();
 }
-mechBtn.addEventListener('click', () => setMech(!MECH.on));
+mechBtn.addEventListener('click', () => setMech(!MECH.on, true));
 function placeMech() {
   if (!MECH.on || !G.rh) return;
   const narrow = W < 760;
@@ -2786,8 +2786,8 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
 // ---------------------------------------------------------------- boot
 if (!restore()) loadSong('nearer'); else refreshUi();
 layout();
-let mechPref = null; try { mechPref = localStorage.getItem('paper-music-box-mech'); } catch (e) {}
-setMech(mechPref == null ? W >= 900 : mechPref === '1');
+let mechPref = null; try { mechPref = localStorage.getItem('paper-music-box-mech-v2'); } catch (e) {}
+setMech(mechPref === '1');   // off unless the viewer has turned it on
 let last = performance.now();
 function frame(ms) {
   const dt = Math.min(.05, Math.max(0, (ms - last) / 1000)); last = ms; now = ms / 1000;
