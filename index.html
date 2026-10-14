@@ -192,22 +192,19 @@ function sailor() {
 
 // Pachelbel, Canon in D (c. 1694), from the Mutopia edition of the original parts for three violins and bass.
 // Written here in C and played on a comb tuned a whole step up, so it sounds in D. A beat is an eighth note.
-// The bass plays its two-bar ground alone, then the violins enter one at a time, two bars apart, all playing the
-// same line: the opening half notes, the walking eighths, and the first running sixteenths (bars 1-16 of the part).
-// Three low notes are lifted an octave to fit the comb.
+// A music-box arrangement of the famous opening: the bass plays its two-bar ground alone, the first violin plays
+// the first eight bars of its line, then plays them again while a second violin follows two bars behind, in canon.
+// (In bar 6 the low neighbour note sits below the comb, so it becomes the third above.)
 const CANON = 'E5:2 D5:2 C5:2 B4:2 A4:2 G4:2 A4:2 B4:2 C5:2 B4:2 A4:2 G4:2 F4:2 E4:2 F4:2 D4:2 ' +
-  'C4 E4 G4 F4 E4 C4 E4 D4 C4 A4 C4 G4 F4 A4 G4 F4 ' +
-  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5 ' +
-  ['C5 B4 C5 C4 B4 G4 D5 E5 C5 C6 B5 A5 B5 E5 G5 A5', 'F5 E5 D5 F5 E5 D5 C5 B4 A4 G4 F4 E4 D4 F4 E4 D4',
-   'C4 D4 E4 F4 G4 D4 G4 F4 E4 A4 G4 F4 G4 F4 E4 D4', 'C4 A4 A4 B4 C5 B4 A4 G4 F4 E4 D4 A4 G4 A4 G4 F4']
-    .map(bar => bar.split(' ').map(n => n + ':.5').join(' ')).join(' ') + ' ' +
-  'E4 E5 D5:2 r C5 E5:2 A5:2 G5:2 A5:2 B5:2 C6 C5 B4:2 r A4 C5:2 C5:3 C5 C5 F5 D5 G5';
+  'C4 E4 G4 F4 E4 C4 E4 D4 C4 E4 C4 G4 F4 A4 G4 F4 ' +
+  'E4 C4 D4 B4 C5 E5 G5 G4 A4 F4 G4 E4 C4 C5 C5:1.5 B4:.5';
 const GROUND = 'C4:2 G4:2 A4:2 E4:2 F4:2 C4:2 F4:2 G4:2';
 function canon() {
   const out = [];
-  for (let k = 0; k < 11; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
-  for (let v = 0; v < 3; v++) out.push(...tagged(seq(CANON, 16 + v * 16), v + 1));
-  for (const n of ['C4', 'E4', 'G4', 'C5']) out.push([176, NAMES.indexOf(n), 0]);   // the closing chord
+  for (let k = 0; k < 10; k++) out.push(...tagged(seq(GROUND, k * 16), 0));
+  out.push(...tagged(seq(CANON, 16), 1), ...tagged(seq(CANON, 80), 1), ...tagged(seq(CANON, 96), 2));
+  for (const n of ['C4', 'G4']) out.push([160, NAMES.indexOf(n), 0]);
+  for (const n of ['C5', 'E5']) out.push([160, NAMES.indexOf(n), 1]);   // the closing chord
   return out;
 }
 const SONGS = {
@@ -222,7 +219,7 @@ const SONGS = {
   gymno: { L: 63, meter: 3, tempo: 1.15, transpose: 2, notes: gymnopedie },
   dies: { L: 72, meter: 4, tempo: 1.5, notes: diesIrae },
   sailor: { L: 64, meter: 8, tempo: 3.1, notes: sailor },
-  canon: { L: 184, meter: 8, tempo: 2.3, transpose: 2, notes: canon },
+  canon: { L: 168, meter: 8, tempo: 1.9, transpose: 2, notes: canon },
   blank: { L: 32, tempo: 2.0, notes: () => [] }
 };
 
@@ -481,7 +478,8 @@ function advance(d, spread, source) {
     const base = mod(t, 2 * L) * 16;
     for (let r = 0; r < N; r++) if (notes.has(base + r)) {
       everPlayed = true;
-      pluck(r, spread ? ((t / 2 - p0) / d) * spread : 0, 1, t);
+      const v = voiceOf.get(base + r);   // bass and accompaniment sit back so the melody leads
+      pluck(r, spread ? ((t / 2 - p0) / d) * spread : 0, v === 0 ? .58 : v === 2 ? .82 : 1, t);
     }
   }
 }
@@ -2438,7 +2436,7 @@ function buildNaveArt(s) {
 
 // ---- the palace for Pachelbel: a baroque façade with a domed centre, giant columns and a garden front
 function buildPalaceArt(s) {
-  const base = Math.round(G.y0 + 26 * s), u = Math.max(2, (base - 10) / 64), cx = W * .58;
+  const base = Math.round(G.y0 + 26 * s), u = Math.max(2, (base - 10) / 67), cx = W * .58;
   const c = document.createElement('canvas'); c.width = W; c.height = base + 4;
   const q = c.getContext('2d');
   const X = v => cx + v * u, Y = v => base - v * u, HW = clamp(Math.round(W * .46 / u), 48, 96);   // wings reach most of the way across
@@ -2519,28 +2517,32 @@ function buildPalaceArt(s) {
     q.strokeStyle = STONE; q.lineWidth = .18 * u; for (const sx of [-1, 1]) { q.beginPath(); q.arc(X(x + sx * .9), Y(25.7), .25 * u, 0, TAU); q.stroke(); }
   }
   cornice(-14.6, 14.6, 26, .8); rect(-14.6, 26.8, 14.6, 27.7, STONE2); cornice(-15, 15, 27.7, 1);
-  // the pediment, with a cartouche and garlands in the tympanum
+  // the central roof the dome stands on, rising behind the pediment
+  q.fillStyle = SLATE; q.beginPath(); q.moveTo(X(-14.6), Y(28.7)); q.lineTo(X(-11.5), Y(37.6)); q.lineTo(X(11.5), Y(37.6)); q.lineTo(X(14.6), Y(28.7)); q.closePath(); q.fill();
+  rect(-11.5, 37.2, 11.5, 37.8, SLATE2);
+  balustrade(-10.6, 10.6, 37.8);
+    // the pediment, with a cartouche and garlands in the tympanum
   q.fillStyle = STONE; q.beginPath(); q.moveTo(X(-15.4), Y(28.7)); q.lineTo(X(0), Y(36.2)); q.lineTo(X(15.4), Y(28.7)); q.closePath(); q.fill();
   q.fillStyle = STONE2; q.beginPath(); q.moveTo(X(-13.4), Y(29.4)); q.lineTo(X(0), Y(35.2)); q.lineTo(X(13.4), Y(29.4)); q.closePath(); q.fill();
   q.strokeStyle = SHADOW; q.lineWidth = .3 * u; q.beginPath(); q.moveTo(X(-15.4), Y(28.7)); q.lineTo(X(0), Y(36.2)); q.lineTo(X(15.4), Y(28.7)); q.stroke();
   q.fillStyle = STONE; q.beginPath(); q.ellipse(X(0), Y(31.4), 1.6 * u, 1.3 * u, 0, 0, TAU); q.fill(); q.strokeStyle = SHADOW; q.stroke();
   q.lineWidth = .28 * u; q.strokeStyle = STONE;
   for (const sx of [-1, 1]) { q.beginPath(); q.moveTo(X(sx * 1.6), Y(31.4)); q.quadraticCurveTo(X(sx * 4.5), Y(29.6), X(sx * 7.5), Y(31)); q.quadraticCurveTo(X(sx * 9.5), Y(30), X(sx * 11), Y(30.2)); q.stroke(); }
-  statue(0, 36); statue(-14.6, 28.8); statue(14.6, 28.8);
+  statue(-14.6, 28.8); statue(14.6, 28.8);
   // the drum and dome, with its lantern
-  rect(-8.2, 36, 8.2, 43.2, STONE);
-  for (const x of [-6, -3, 0, 3, 6]) { win(x - .65, 37.5, 1.3, 3, true, null); }
-  for (const x of [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]) rect(x - .25, 36.2, x + .25, 42.6, STONE2);
-  cornice(-8.4, 8.4, 42.6, .8);
+  rect(-8.2, 37.8, 8.2, 44.6, STONE);
+  for (const x of [-6, -3, 0, 3, 6]) { win(x - .65, 39, 1.3, 3, true, null); }
+  for (const x of [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]) rect(x - .25, 38, x + .25, 44, STONE2);
+  cornice(-8.4, 8.4, 44, .8);
   const dg = q.createLinearGradient(X(-8.5), 0, X(8.5), 0);
   dg.addColorStop(0, '#7f8798'); dg.addColorStop(.35, '#a8b0c0'); dg.addColorStop(1, '#4a5060');
-  q.fillStyle = dg; q.beginPath(); q.ellipse(X(0), Y(43.4), 8.4 * u, 11.4 * u, 0, Math.PI, 0); q.fill();
+  q.fillStyle = dg; q.beginPath(); q.ellipse(X(0), Y(44.8), 8.4 * u, 11.4 * u, 0, Math.PI, 0); q.fill();
   q.strokeStyle = 'rgba(40,44,56,.45)'; q.lineWidth = Math.max(.6, u * .14);
-  for (let i = 1; i < 8; i++) { const a = Math.PI + i / 8 * Math.PI; q.beginPath(); q.moveTo(X(Math.cos(a) * 8.4), Y(43.4)); q.quadraticCurveTo(X(Math.cos(a) * 6), Y(51), X(0), Y(54.8)); q.stroke(); }
-  rect(-1.8, 54.4, 1.8, 59, STONE); for (const x of [-1, 0, 1]) rect(x - .2, 55.4, x + .2, 58, GLASS);
-  cornice(-2, 2, 58.6, .5);
-  q.fillStyle = '#7f8798'; q.beginPath(); q.ellipse(X(0), Y(59.2), 2 * u, 2.2 * u, 0, Math.PI, 0); q.fill();
-  q.fillStyle = '#c9a050'; q.beginPath(); q.arc(X(0), Y(62), .5 * u, 0, TAU); q.fill(); rect(-.08, 62.4, .08, 64.4, '#c9a050'); rect(-.5, 63.5, .5, 63.7, '#c9a050');
+  for (let i = 1; i < 8; i++) { const a = Math.PI + i / 8 * Math.PI; q.beginPath(); q.moveTo(X(Math.cos(a) * 8.4), Y(44.8)); q.quadraticCurveTo(X(Math.cos(a) * 6), Y(52.4), X(0), Y(56.2)); q.stroke(); }
+  rect(-1.8, 55.8, 1.8, 60.4, STONE); for (const x of [-1, 0, 1]) rect(x - .2, 56.8, x + .2, 59.4, GLASS);
+  cornice(-2, 2, 60, .5);
+  q.fillStyle = '#7f8798'; q.beginPath(); q.ellipse(X(0), Y(60.6), 2 * u, 2.2 * u, 0, Math.PI, 0); q.fill();
+  q.fillStyle = '#c9a050'; q.beginPath(); q.arc(X(0), Y(63.4), .5 * u, 0, TAU); q.fill(); rect(-.08, 63.8, .08, 65.8, '#c9a050'); rect(-.5, 64.9, .5, 65.1, '#c9a050');
   // steps up to the doors
   for (let i = 0; i < 4; i++) rect(-10 - i * .6, -i * .5 - .5, 10 + i * .6, -i * .5, i % 2 ? STONE2 : STONE);
   GD.palace = c; GD.palaceTop = 0;
@@ -2552,19 +2554,19 @@ function buildParisArt(s) {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const q = c.getContext('2d');
   RN.wins = [];
-  const roofY = Math.max(24 * s, G.y0 * .36), floorH = 50 * s, street = horizonY();
+  const roofY = Math.max(24 * s, G.y0 * .36), floorH = 64 * s, street = horizonY(), BAYW = 92 * s;   // one window per bay, well spaced
   // the façade runs right across the view; the paper strip hides its middle floors
   const fx0 = -20, fx1 = W + 20;
   // mansard roof: zinc, with dormers and a long row of chimney pots
   q.fillStyle = '#39414f'; q.beginPath(); q.moveTo(fx0, roofY + 34 * s); q.lineTo(fx0 + 30 * s, roofY); q.lineTo(fx1 - 30 * s, roofY); q.lineTo(fx1, roofY + 34 * s); q.closePath(); q.fill();
   q.strokeStyle = 'rgba(160,175,195,.18)'; q.lineWidth = 1;
   for (let x = fx0 + 30 * s; x < fx1; x += 9 * s) { q.beginPath(); q.moveTo(x, roofY); q.lineTo(x, roofY + 34 * s); q.stroke(); }
-  for (let x = fx0 + 60 * s; x < fx1 - 40 * s; x += 150 * s) {
+  for (let x = fx0 + 60 * s; x < fx1 - 40 * s; x += BAYW * 3) {
     q.fillStyle = '#5b4a40'; q.fillRect(x, roofY - 26 * s, 34 * s, 28 * s);
     q.fillStyle = '#4a3c34'; q.fillRect(x - 3 * s, roofY - 28 * s, 40 * s, 4 * s);
     for (let p = 0; p < 6; p++) { q.fillStyle = '#9a5a3e'; q.fillRect(x + 2 * s + p * 5.4 * s, roofY - 36 * s, 3.6 * s, 9 * s); q.fillStyle = '#6e3e2a'; q.fillRect(x + 2 * s + p * 5.4 * s, roofY - 36 * s, 3.6 * s, 1.6 * s); }
   }
-  for (let x = fx0 + 54 * s; x < fx1 - 30 * s; x += 48 * s) {
+  for (let x = fx0 + 50 * s + BAYW / 2; x < fx1 - 30 * s; x += BAYW) {
     q.fillStyle = '#4a515e'; q.beginPath(); q.moveTo(x - 9 * s, roofY + 30 * s); q.lineTo(x - 9 * s, roofY + 12 * s); q.arc(x, roofY + 12 * s, 9 * s, Math.PI, 0); q.lineTo(x + 9 * s, roofY + 30 * s); q.closePath(); q.fill();
     q.fillStyle = '#20232c'; q.fillRect(x - 5 * s, roofY + 13 * s, 10 * s, 15 * s);
     RN.wins.push({ x: x - 5 * s, y: roofY + 13 * s, w: 10 * s, h: 15 * s, on: Math.random() < .4, ph: Math.random() * 6, warm: Math.random(), kind: 'dormer' });
@@ -2575,10 +2577,12 @@ function buildParisArt(s) {
   q.fillStyle = '#d0c4ad'; q.fillRect(fx0, top, fx1 - fx0, 5 * s);
   q.fillStyle = '#857965'; q.fillRect(fx0, top + 5 * s, fx1 - fx0, 2 * s);
   for (let y = top + 10 * s; y < street; y += 6 * s) { q.fillStyle = 'rgba(110,98,80,.25)'; q.fillRect(fx0, y, fx1 - fx0, 1); }
+  // shallow pilasters between the bays give the front its rhythm
+  for (let x = fx0 + 50 * s; x < fx1; x += BAYW) { q.fillStyle = '#c4b7a0'; q.fillRect(x - 4 * s, top + 7 * s, 8 * s, street - top - 7 * s); q.fillStyle = 'rgba(90,80,64,.35)'; q.fillRect(x + 4 * s, top + 7 * s, 1.5 * s, street - top - 7 * s); }
   let fl = 0;
   for (let y = top + 12 * s; y < street - 20 * s; y += floorH, fl++) {
-    for (let x = fx0 + 40 * s; x < fx1 - 30 * s; x += 48 * s) {
-      const ww = 16 * s, wh = Math.min(floorH - 16 * s, 32 * s);
+    for (let x = fx0 + 40 * s + BAYW / 2; x < fx1 - 30 * s; x += BAYW) {
+      const ww = 20 * s, wh = Math.min(floorH - 18 * s, 40 * s);
       q.fillStyle = '#cfc3ac'; q.fillRect(x - 3 * s, y - 3 * s, ww + 6 * s, wh + 6 * s);
       q.fillStyle = '#1e2029'; q.fillRect(x, y, ww, wh);
       q.fillStyle = '#d6cbb5'; q.beginPath(); q.moveTo(x - 4 * s, y - 3 * s); q.lineTo(x + ww / 2, y - 8 * s); q.lineTo(x + ww + 4 * s, y - 3 * s); q.closePath(); q.fill();
